@@ -1,0 +1,18 @@
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
+# for detailed Gopkg.toml documentation.
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.3"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/awalterschulze/gographviz"
+  branch = "master"
+
+[prune]
+  go-tests = true
+  unused-packages = true
