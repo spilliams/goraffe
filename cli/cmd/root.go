@@ -53,8 +53,7 @@ func initLogger() {
 	if Verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
-	logrus.SetOutput(RootCmd.OutOrStdout())
+	logrus.SetOutput(RootCmd.OutOrStderr())
 	logrus.StandardLogger().Formatter.(*logrus.TextFormatter).DisableTimestamp = true
 	logrus.StandardLogger().Formatter.(*logrus.TextFormatter).DisableLevelTruncation = true
-
 }

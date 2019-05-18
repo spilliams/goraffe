@@ -10,25 +10,34 @@ import (
 	"strings"
 
 	"github.com/awalterschulze/gographviz"
+	"github.com/sirupsen/logrus"
 )
 
 type Tree struct {
-	pattern    *regexp.Regexp
-	packageMap map[string][]string
+	packageMap    map[string]*build.Package // a map of package names to imported packages
+	nameMap       map[string]string         // a map of package names to display names
+	filterPattern *regexp.Regexp
+	prefix        string
 }
 
-func NewTree(filter string) (*Tree, error) {
-	treeFilter, err := regexp.Compile(filter)
-	if err != nil {
-		return nil, err
-	}
-
+func NewTree() *Tree {
 	t := Tree{
-		pattern:    treeFilter,
-		packageMap: make(map[string][]string),
+		packageMap: make(map[string]*build.Package),
+		nameMap:    make(map[string]string),
 	}
 
-	return &t, nil
+	return &t
+}
+
+func (t *Tree) SetFilter(filter string) (err error) {
+	if t.filterPattern, err = regexp.Compile(filter); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Tree) SetPrefix(prefix string) {
+	t.prefix = prefix
 }
 
 func (t *Tree) String() string {
@@ -40,60 +49,81 @@ func (t *Tree) String() string {
 	return string(treeBytes)
 }
 
-func (t *Tree) FindImport(pkg string) error {
-	if !t.pattern.MatchString(pkg) {
-		// doesn't match the filter, skip it
-		return nil
+func (t *Tree) Add(name string, recurse bool) (err error) {
+	logrus.Debugf("adding %s", name)
+	name = t.filter(name)
+	if name == "" {
+		return
 	}
 
-	if pkg == "C" {
+	displayName := strings.TrimPrefix(name, t.prefix)
+
+	if name == "C" {
 		// C isn't really a package
 		t.packageMap["C"] = nil
 	}
 
-	if _, ok := t.packageMap[pkg]; ok {
+	if _, ok := t.packageMap[name]; ok {
 		// seen this package before, skip it
 		return nil
 	}
 
-	if strings.HasPrefix(pkg, "golang_org") {
-		pkg = path.Join("vendor", pkg)
+	if strings.HasPrefix(name, "golang_org") {
+		displayName = path.Join("vendor", name)
 	}
 
-	gopkg, err := build.Import(pkg, "", 0)
+	pkg, err := build.Import(name, "", 0)
 	if err != nil {
 		return err
 	}
-	t.packageMap[pkg] = t.filter(gopkg.Imports)
+	pkg.Imports = t.filterNames(pkg.Imports)
+	t.packageMap[name] = pkg
+	t.nameMap[name] = displayName
 
-	// recurse
-	for _, childPkg := range t.packageMap[pkg] {
-		if err = t.FindImport(childPkg); err != nil {
-			return err
+	if recurse {
+		for _, childPkg := range t.packageMap[name].Imports {
+			if err = t.Add(childPkg, recurse); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func (t *Tree) filter(names []string) []string {
-	var filtered []string
+func (t *Tree) filterNames(names []string) []string {
+	r := []string{}
 	for _, name := range names {
-		if t.pattern.MatchString(name) {
-			filtered = append(filtered, name)
+		name = t.filter(name)
+		if name != "" {
+			r = append(r, name)
 		}
 	}
-	return filtered
+	return r
 }
 
-func (t *Tree) PackageMap() map[string][]string {
-	return t.packageMap
+func (t *Tree) filter(name string) string {
+	if t.filterPattern != nil && !t.filterPattern.MatchString(name) {
+		// doesn't match the filter, skip it
+		return ""
+	}
+
+	if t.prefix != "" {
+		if !strings.HasPrefix(name, t.prefix) {
+			// doesn't have the prefix, skip it
+			return ""
+		}
+	}
+
+	return name
 }
 
+// Broaden returns a list of maps. Each map has one key, and the key is a
+// package that imports the value.
 func (t *Tree) Broaden() []map[string]string {
 	b := make([]map[string]string, 0, len(t.packageMap))
-	for name, imports := range t.packageMap {
-		for _, importName := range imports {
+	for name, pkg := range t.packageMap {
+		for _, importName := range pkg.Imports {
 			m := map[string]string{name: importName}
 			b = append(b, m)
 		}
@@ -103,9 +133,9 @@ func (t *Tree) Broaden() []map[string]string {
 
 func (t *Tree) PackageNames() []string {
 	names := make(map[string]bool)
-	for name, imports := range t.packageMap {
+	for name, pkg := range t.packageMap {
 		names[name] = true
-		for _, importName := range imports {
+		for _, importName := range pkg.Imports {
 			names[importName] = true
 		}
 	}
@@ -134,8 +164,12 @@ func (t *Tree) Graphviz() (string, error) {
 	}
 
 	for packageName, nodeName := range names {
+		displayName := packageName
+		if dn, ok := t.nameMap[packageName]; ok && dn != "" {
+			displayName = dn
+		}
 		if err := g.AddNode("", nodeName, map[string]string{
-			"label": fmt.Sprintf("\"%s\"", packageName),
+			"label": fmt.Sprintf("\"%s\"", displayName),
 			"shape": "box",
 		}); err != nil {
 			return "", err
