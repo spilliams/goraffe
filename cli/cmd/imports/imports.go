@@ -11,11 +11,13 @@ import (
 const (
 	pkgFilterFlag = "filter"
 	pkgPrefixFlag = "prefix"
+	singlePkgFlag = "single"
 )
 
 var importsFlags struct {
 	pkgFilter string
 	pkgPrefix string
+	singlePkg string
 }
 
 var Cmd = &cobra.Command{
@@ -35,6 +37,9 @@ include packages that don't match that filter.
 If you provide the optional --` + pkgPrefixFlag + ` flag, the graph will not
 include packages that have that prefix AND the graph will truncate each
 package's name to not include the prefix.
+
+If you provide the optional --` + singlePkgFlag + ` flag, the graph will
+contain that package, its direct ancestors, and its direct descendants.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
@@ -56,6 +61,12 @@ package's name to not include the prefix.
 			}
 		}
 
+		// if importsFlags.singlePkg != "" {
+		// 	importTree.Keep(importsFlags.singlePkg)
+		// 	importTree.Grow(1)
+		// 	importTree.Prune()
+		// }
+
 		graph, err := importTree.Graphviz()
 		if err != nil {
 			return err
@@ -70,4 +81,5 @@ package's name to not include the prefix.
 func init() {
 	Cmd.Flags().StringVar(&importsFlags.pkgFilter, pkgFilterFlag, "", "Regular expression filter to apply to the package list")
 	Cmd.Flags().StringVar(&importsFlags.pkgPrefix, pkgPrefixFlag, "", "Prefix filter to apply to the package list")
+	Cmd.Flags().StringVar(&importsFlags.singlePkg, singlePkgFlag, "", "Pick a single package to show ancestors and descendants of")
 }

@@ -13,22 +13,32 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Tree isn't actually a tree structure, but maintains a map of package names
+// to packages.
 type Tree struct {
-	packageMap    map[string]*build.Package // a map of package names to imported packages
-	nameMap       map[string]string         // a map of package names to display names
+	packageMap    map[string]*leaf
 	filterPattern *regexp.Regexp
 	prefix        string
 }
 
+type leaf struct {
+	pkg         *build.Package
+	displayName string
+	keep        bool
+}
+
+// NewTree returns a new, empty Tree
 func NewTree() *Tree {
 	t := Tree{
-		packageMap: make(map[string]*build.Package),
-		nameMap:    make(map[string]string),
+		packageMap: make(map[string]*leaf),
 	}
 
 	return &t
 }
 
+// SetFilter sets the tree's filter. Any time a package is about to be added to
+// the tree, it gets checked by this filter first. If it doesn't match the
+// regular expression, it won't get added.
 func (t *Tree) SetFilter(filter string) (err error) {
 	if t.filterPattern, err = regexp.Compile(filter); err != nil {
 		return err
@@ -36,19 +46,18 @@ func (t *Tree) SetFilter(filter string) (err error) {
 	return nil
 }
 
+// SetPrefix sets the tree's prefix. Any time a package is about to be added to
+// the tree, it gets checked for this prefix. If it doesn't have the prefix, it
+// won't get added. Additionally, if the prefix is set, all display names of
+// the tree's packages will omit the prefix for clarity.
 func (t *Tree) SetPrefix(prefix string) {
 	t.prefix = prefix
 }
 
-func (t *Tree) String() string {
-	treeBytes, err := json.MarshalIndent(t.packageMap, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
-
-	return string(treeBytes)
-}
-
+// Add attempts to add a package to the tree. This will run the package through
+// and applicable filters, and if it passes them, adds it to the tree. Then the
+// package's Imports list will also be filtered. Finally, if `recurse` is set,
+// Add will run on each of the package's (filtered) Imports.
 func (t *Tree) Add(name string, recurse bool) (err error) {
 	logrus.Debugf("adding %s", name)
 	name = t.filter(name)
@@ -77,17 +86,33 @@ func (t *Tree) Add(name string, recurse bool) (err error) {
 		return err
 	}
 	pkg.Imports = t.filterNames(pkg.Imports)
-	t.packageMap[name] = pkg
-	t.nameMap[name] = displayName
+	t.packageMap[name] = &leaf{pkg: pkg, displayName: displayName}
 
 	if recurse {
-		for _, childPkg := range t.packageMap[name].Imports {
+		for _, childPkg := range t.packageMap[name].pkg.Imports {
 			if err = t.Add(childPkg, recurse); err != nil {
 				return err
 			}
 		}
 	}
 
+	return nil
+}
+
+// Keep marks a single package in the tree for keeping.
+func (t *Tree) Keep(name string) (err error) {
+	return nil
+}
+
+// Grow expands the "tree" of kept packages by the given count. This works in
+// both directions (ancestors and descendants).
+func (t *Tree) Grow(count int) (err error) {
+	return nil
+}
+
+// Prune removes all packages and package imports from the tree that are not
+// marked for keeping.
+func (t *Tree) Prune() (err error) {
 	return nil
 }
 
@@ -118,12 +143,13 @@ func (t *Tree) filter(name string) string {
 	return name
 }
 
-// Broaden returns a list of maps. Each map has one key, and the key is a
-// package that imports the value.
+// Broaden returns a list of maps. Each map has one key, and that key and value
+// each represent a package name. Each map represents "this package imports
+// that package".
 func (t *Tree) Broaden() []map[string]string {
 	b := make([]map[string]string, 0, len(t.packageMap))
-	for name, pkg := range t.packageMap {
-		for _, importName := range pkg.Imports {
+	for name, leaf := range t.packageMap {
+		for _, importName := range leaf.pkg.Imports {
 			m := map[string]string{name: importName}
 			b = append(b, m)
 		}
@@ -131,11 +157,13 @@ func (t *Tree) Broaden() []map[string]string {
 	return b
 }
 
+// PackageNames returns a sorted list of all of the tree's packages and package
+// Imports.
 func (t *Tree) PackageNames() []string {
 	names := make(map[string]bool)
-	for name, pkg := range t.packageMap {
+	for name, leaf := range t.packageMap {
 		names[name] = true
-		for _, importName := range pkg.Imports {
+		for _, importName := range leaf.pkg.Imports {
 			names[importName] = true
 		}
 	}
@@ -148,6 +176,18 @@ func (t *Tree) PackageNames() []string {
 	return r
 }
 
+func (t *Tree) String() string {
+	treeBytes, err := json.MarshalIndent(t.packageMap, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(treeBytes)
+}
+
+// Graphviz returns the tree's representation in the graphviz source language,
+// as for use with the `dot` command-line tool.
+// See https://graphviz.org/documentation/ for more information.
 func (t *Tree) Graphviz() (string, error) {
 
 	packageNames := t.PackageNames()
@@ -165,8 +205,8 @@ func (t *Tree) Graphviz() (string, error) {
 
 	for packageName, nodeName := range names {
 		displayName := packageName
-		if dn, ok := t.nameMap[packageName]; ok && dn != "" {
-			displayName = dn
+		if leaf, ok := t.packageMap[packageName]; ok && leaf.displayName != "" {
+			displayName = leaf.displayName
 		}
 		if err := g.AddNode("", nodeName, map[string]string{
 			"label": fmt.Sprintf("\"%s\"", displayName),

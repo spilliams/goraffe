@@ -13,9 +13,6 @@ old graphviz skillz, and perhaps make something useful to other Go developers.
 TODO
 ====
 
-- ``goraffe imports`` to generate actual dot file. Or at least print source to stdout without logrus in the way (for piping)
-- ``goraffe imports`` does it need to work with multiple packages named?
-- ``goraffe imports`` current impl uses ``--filter``. consider ``--prefix`` instead (or in addition)
 - ``goraffe imports`` add a ``--single <this>`` flag to get just the things that import this, and the things this imports
 - ``goraffe imports`` add an ``--outline <...>`` flag to outline certain nodes (such as "nodes only imported by one other package")
 - ``goraffe calltree <pkg> <func>`` can we introspect on function calls within the context of a package?
