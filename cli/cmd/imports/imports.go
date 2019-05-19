@@ -10,15 +10,19 @@ import (
 )
 
 const (
-	pkgFilterFlag = "filter"
-	pkgPrefixFlag = "prefix"
-	singlePkgFlag = "single"
+	filterFlag    = "filter"
+	prefixFlag    = "prefix"
+	singleFlag    = "single"
+	highlightFlag = "highlight"
+
+	highlightSingleParent = "single-parent"
 )
 
 var importsFlags struct {
-	pkgFilter string
-	pkgPrefix string
-	singlePkg string
+	filter    string
+	prefix    string
+	single    string
+	highlight string
 }
 
 var Cmd = &cobra.Command{
@@ -32,30 +36,36 @@ the graph.
 The graph will include everything the roots import, recursively. The graph will
 include the entire dependency chain of the packages you list.
 
-If you provide the optional --` + pkgFilterFlag + ` flag, the graph will not
+If you provide the optional --` + filterFlag + ` flag, the graph will not
 include packages that don't match that filter.
 
-If you provide the optional --` + pkgPrefixFlag + ` flag, the graph will not
+If you provide the optional --` + prefixFlag + ` flag, the graph will not
 include packages that have that prefix AND the graph will truncate each
 package's name to not include the prefix.
 
-If you provide the optional --` + singlePkgFlag + ` flag, the graph will
+If you provide the optional --` + singleFlag + ` flag, the graph will
 contain that package, its direct ancestors, and its direct descendants.
+
+If you provide the optional --` + highlightFlag + ` flag, the graph will
+highlight matching nodes. The allowed values for this flag are
+
+	` + highlightSingleParent + `		Packages that are only imported by one other package are "` + highlightSingleParent + `"
+	
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
 		importTree := tree.NewTree()
 
-		if importsFlags.pkgFilter != "" {
-			logrus.Debugf("%s is '%s'", pkgFilterFlag, importsFlags.pkgFilter)
-			if err := importTree.SetFilter(importsFlags.pkgFilter); err != nil {
+		if importsFlags.filter != "" {
+			logrus.Debugf("%s is '%s'", filterFlag, importsFlags.filter)
+			if err := importTree.SetFilter(importsFlags.filter); err != nil {
 				return err
 			}
 		}
 
-		if importsFlags.pkgPrefix != "" {
-			logrus.Debugf("%s is '%s'", pkgPrefixFlag, importsFlags.pkgPrefix)
-			importTree.SetPrefix(importsFlags.pkgPrefix)
+		if importsFlags.prefix != "" {
+			logrus.Debugf("%s is '%s'", prefixFlag, importsFlags.prefix)
+			importTree.SetPrefix(importsFlags.prefix)
 		}
 
 		for _, pkg := range args {
@@ -64,13 +74,20 @@ contain that package, its direct ancestors, and its direct descendants.
 			}
 		}
 
-		if importsFlags.singlePkg != "" {
-			logrus.Debugf("%s is '%s'", singlePkgFlag, importsFlags.singlePkg)
-			if err := importTree.Keep(importsFlags.singlePkg); err != nil {
+		if importsFlags.single != "" {
+			logrus.Debugf("%s is '%s'", singleFlag, importsFlags.single)
+			if err := importTree.Keep(importsFlags.single); err != nil {
 				return err
 			}
 			importTree.Grow(1)
 			importTree.Prune()
+		}
+
+		if importsFlags.highlight != "" {
+			if err := validateHighlight(importsFlags.highlight); err != nil {
+				return err
+			}
+			importTree.SetHighlight(importsFlags.highlight)
 		}
 
 		logrus.Debug(importTree)
@@ -86,8 +103,16 @@ contain that package, its direct ancestors, and its direct descendants.
 	},
 }
 
+func validateHighlight(hl string) error {
+	if hl == highlightSingleParent {
+		return nil
+	}
+	return fmt.Errorf("unrecognized value for --%s: %s", highlightFlag, hl)
+}
+
 func init() {
-	Cmd.Flags().StringVar(&importsFlags.pkgFilter, pkgFilterFlag, "", "Regular expression filter to apply to the package list")
-	Cmd.Flags().StringVar(&importsFlags.pkgPrefix, pkgPrefixFlag, "", "Prefix filter to apply to the package list")
-	Cmd.Flags().StringVar(&importsFlags.singlePkg, singlePkgFlag, "", "Pick a single package to show ancestors and descendants of")
+	Cmd.Flags().StringVar(&importsFlags.filter, filterFlag, "", "Regular expression filter to apply to the package list")
+	Cmd.Flags().StringVar(&importsFlags.prefix, prefixFlag, "", "Prefix filter to apply to the package list")
+	Cmd.Flags().StringVar(&importsFlags.single, singleFlag, "", "Pick a single package to show ancestors and descendants of")
+	Cmd.Flags().StringVar(&importsFlags.highlight, highlightFlag, "", "Highlight certain packages")
 }
