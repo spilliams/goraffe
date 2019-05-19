@@ -3,6 +3,7 @@ package imports
 import (
 	"fmt"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spilliams/goraffe/cli/tree"
 
 	"github.com/spf13/cobra"
@@ -46,12 +47,14 @@ contain that package, its direct ancestors, and its direct descendants.
 		importTree := tree.NewTree()
 
 		if importsFlags.pkgFilter != "" {
+			logrus.Debugf("%s is '%s'", pkgFilterFlag, importsFlags.pkgFilter)
 			if err := importTree.SetFilter(importsFlags.pkgFilter); err != nil {
 				return err
 			}
 		}
 
 		if importsFlags.pkgPrefix != "" {
+			logrus.Debugf("%s is '%s'", pkgPrefixFlag, importsFlags.pkgPrefix)
 			importTree.SetPrefix(importsFlags.pkgPrefix)
 		}
 
@@ -61,11 +64,16 @@ contain that package, its direct ancestors, and its direct descendants.
 			}
 		}
 
-		// if importsFlags.singlePkg != "" {
-		// 	importTree.Keep(importsFlags.singlePkg)
-		// 	importTree.Grow(1)
-		// 	importTree.Prune()
-		// }
+		if importsFlags.singlePkg != "" {
+			logrus.Debugf("%s is '%s'", singlePkgFlag, importsFlags.singlePkg)
+			if err := importTree.Keep(importsFlags.singlePkg); err != nil {
+				return err
+			}
+			importTree.Grow(1)
+			importTree.Prune()
+		}
+
+		logrus.Debug(importTree)
 
 		graph, err := importTree.Graphviz()
 		if err != nil {

@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/build"
 	"path"
@@ -14,23 +13,63 @@ import (
 )
 
 // Tree isn't actually a tree structure, but maintains a map of package names
-// to packages.
+// to Leaves.
 type Tree struct {
-	packageMap    map[string]*leaf
+	packageMap    map[string]*Leaf
 	filterPattern *regexp.Regexp
 	prefix        string
 }
 
-type leaf struct {
-	pkg         *build.Package
+// Leaf contains helpful information about each package, like the package
+// itself, a friendly display name, and whether or not the tree wants to keep
+// it.
+type Leaf struct {
+	attrs       map[string]string
 	displayName string
 	keep        bool
+	pkg         *build.Package
+}
+
+func (l *Leaf) String() string {
+	keepString := ""
+	if l.keep {
+		keepString = ", keep"
+	}
+	return fmt.Sprintf("Leaf{%s, %d imports%s}", l.displayName, len(l.pkg.Imports), keepString)
+}
+
+func (l *Leaf) copy() *Leaf {
+	newLeaf := Leaf{
+		attrs:       l.attrs,
+		displayName: l.displayName,
+		keep:        l.keep,
+		pkg:         l.pkg,
+	}
+	return &newLeaf
+}
+
+func (l *Leaf) attributes() map[string]string {
+	attr := map[string]string{
+		"label": fmt.Sprintf("\"%s\"", l.displayName),
+		"shape": "box",
+	}
+	for k, v := range l.attrs {
+		attr[k] = v
+	}
+	return attr
+}
+
+func (l *Leaf) addAttribute(key, value string) {
+	if l.attrs == nil {
+		l.attrs = make(map[string]string)
+	}
+	l.attrs[key] = value
 }
 
 // NewTree returns a new, empty Tree
 func NewTree() *Tree {
 	t := Tree{
-		packageMap: make(map[string]*leaf),
+		packageMap: make(map[string]*Leaf),
 	}
 
 	return &t
@@ -86,7 +125,7 @@ func (t *Tree) Add(name string, recurse bool) (err error) {
 		return err
 	}
 	pkg.Imports = t.filterNames(pkg.Imports)
-	t.packageMap[name] = &leaf{pkg: pkg, displayName: displayName}
+	t.packageMap[name] = &Leaf{pkg: pkg, displayName: displayName}
 
 	if recurse {
 		for _, childPkg := range t.packageMap[name].pkg.Imports {
@@ -101,19 +140,90 @@ func (t *Tree) Add(name string, recurse bool) (err error) {
 
 // Keep marks a single package in the tree for keeping.
 func (t *Tree) Keep(name string) (err error) {
+	leaf, ok := t.packageMap[name]
+	if !ok {
+		return fmt.Errorf("package %s not found", name)
+	}
+	leaf.keep = true
+	leaf.addAttribute("style", "bold")
+	leaf.addAttribute("color", "green")
+	t.packageMap[name] = leaf
 	return nil
 }
 
 // Grow expands the "tree" of kept packages by the given count. This works in
 // both directions (ancestors and descendants).
 func (t *Tree) Grow(count int) (err error) {
-	return nil
+	keepCount := 0
+	totalCount := 0
+	for _, leaf := range t.packageMap {
+		totalCount++
+		if leaf.keep {
+			keepCount++
+		}
+	}
+	logrus.Debugf("Grow %d. Before: keep %d (total %d)", count, keepCount, totalCount)
+
+	if count <= 0 {
+		return nil
+	}
+
+	// make a copy of the packagemap
+	copy := t.copyPackageMap()
+
+	// only mutate the copy, not the original
+	// grow down
+	for _, leaf := range t.packageMap {
+		if leaf.keep {
+			for _, importName := range leaf.pkg.Imports {
+				if _, ok := copy[importName]; ok {
+					copy[importName].keep = true
+				}
+			}
+		}
+	}
+
+	// grow up
+	for name, leaf := range t.packageMap {
+		for _, importName := range leaf.pkg.Imports {
+			if upLeaf, ok := t.packageMap[importName]; ok {
+				if upLeaf.keep {
+					copy[name].keep = true
+				}
+			}
+		}
+	}
+
+	keepCount = 0
+	for _, leaf := range copy {
+		if leaf.keep {
+			keepCount++
+		}
+	}
+	logrus.Debugf("Grow %d. After: keep %d", count, keepCount)
+
+	t.packageMap = copy
+
+	return t.Grow(count - 1)
 }
 
 // Prune removes all packages and package imports from the tree that are not
 // marked for keeping.
-func (t *Tree) Prune() (err error) {
-	return nil
+func (t *Tree) Prune() {
+	for name, leaf := range t.packageMap {
+		if !leaf.keep {
+			delete(t.packageMap, name)
+			continue
+		}
+		newImports := []string{}
+		for _, importName := range leaf.pkg.Imports {
+			if importLeaf, ok := t.packageMap[importName]; ok && importLeaf.keep {
+				newImports = append(newImports, importName)
+			}
+			leaf.pkg.Imports = newImports
+			t.packageMap[name] = leaf
+		}
+	}
 }
 
 func (t *Tree) filterNames(names []string) []string {
@@ -141,6 +251,16 @@ func (t *Tree) filter(name string) string {
 	}
 
 	return name
+}
+
+func (t *Tree) copyPackageMap() map[string]*Leaf {
+	copy := make(map[string]*Leaf)
+
+	for name, leaf := range t.packageMap {
+		copy[name] = leaf.copy()
+	}
+
+	return copy
 }
 
 // Broaden returns a list of maps. Each map has one key, and that key and value
@@ -177,12 +297,12 @@ func (t *Tree) PackageNames() []string {
 }
 
 func (t *Tree) String() string {
-	treeBytes, err := json.MarshalIndent(t.packageMap, "", "  ")
-	if err != nil {
-		return err.Error()
+	r := "Tree{\n"
+	for name, leaf := range t.packageMap {
+		r += fmt.Sprintf("\t%s: %s\n", name, leaf)
 	}
-
-	return string(treeBytes)
+	r += "}\n"
+	return r
 }
 
 // Graphviz returns the tree's representation in the graphviz source language,
@@ -204,14 +324,11 @@ func (t *Tree) Graphviz() (string, error) {
 	}
 
 	for packageName, nodeName := range names {
-		displayName := packageName
-		if leaf, ok := t.packageMap[packageName]; ok && leaf.displayName != "" {
-			displayName = leaf.displayName
+		leaf, ok := t.packageMap[packageName]
+		if !ok {
+			return "", fmt.Errorf("Unexpected error: couldn't find %s in package map", packageName)
 		}
-		if err := g.AddNode("", nodeName, map[string]string{
-			"label": fmt.Sprintf("\"%s\"", displayName),
-			"shape": "box",
-		}); err != nil {
+		if err := g.AddNode("", nodeName, leaf.attributes()); err != nil {
 			return "", err
 		}
 	}

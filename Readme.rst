@@ -17,15 +17,11 @@ TODO
 - ``goraffe imports`` add an ``--outline <...>`` flag to outline certain nodes (such as "nodes only imported by one other package")
 - ``goraffe calltree <pkg> <func>`` can we introspect on function calls within the context of a package?
 
-
-Proposed CLI command usage:
-
 .. code::
 
-   goraffe imports <pkg> [--filter foo] [--prefix bar] [--single pkg] [--outline baz]
-   goraffe calltree <pkg> <func>
-
-
+   ./scripts/build.sh && goraffe -v imports github.com/spilliams/goraffe/cli --prefix github.com/spilliams/goraffe | dot -Tsvg > graph.svg && open graph.svg
+   ./scripts/build.sh && goraffe -v imports github.com/spilliams/goraffe/cli --prefix github.com/spilliams/goraffe --single github.com/spilliams/goraffe/cli/cmd/imports | dot -Tsvg > graph.svg && open graph.svg
+   
 call tracer
 -----------
 
