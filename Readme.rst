@@ -21,7 +21,7 @@ TODO
 
    ./scripts/build.sh && goraffe -v imports github.com/spilliams/goraffe/cli --prefix github.com/spilliams/goraffe | dot -Tsvg > graph.svg && open graph.svg
    ./scripts/build.sh && goraffe -v imports github.com/spilliams/goraffe/cli --prefix github.com/spilliams/goraffe --single github.com/spilliams/goraffe/cli/cmd/imports | dot -Tsvg > graph.svg && open graph.svg
-   
+
 call tracer
 -----------
 

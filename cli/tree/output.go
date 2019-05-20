@@ -54,6 +54,8 @@ func (t *Tree) String() string {
 // See https://graphviz.org/documentation/ for more information.
 func (t *Tree) Graphviz() (string, error) {
 
+	t.countImports()
+
 	packageNames := t.PackageNames()
 	names := make(map[string]string)
 	for i, packageName := range packageNames {

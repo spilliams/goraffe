@@ -10,19 +10,15 @@ import (
 )
 
 const (
-	filterFlag    = "filter"
-	prefixFlag    = "prefix"
-	singleFlag    = "single"
-	highlightFlag = "highlight"
-
-	highlightSingleParent = "single-parent"
+	filterFlag = "filter"
+	prefixFlag = "prefix"
+	singleFlag = "single"
 )
 
 var importsFlags struct {
-	filter    string
-	prefix    string
-	single    string
-	highlight string
+	filter string
+	prefix string
+	single string
 }
 
 var Cmd = &cobra.Command{
@@ -46,11 +42,6 @@ package's name to not include the prefix.
 If you provide the optional --` + singleFlag + ` flag, the graph will
 contain that package, its direct ancestors, and its direct descendants.
 
-If you provide the optional --` + highlightFlag + ` flag, the graph will
-highlight matching nodes. The allowed values for this flag are
-
-	` + highlightSingleParent + `		Packages that are only imported by one other package are "` + highlightSingleParent + `"
-	
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
@@ -69,7 +60,7 @@ highlight matching nodes. The allowed values for this flag are
 		}
 
 		for _, pkg := range args {
-			if err := importTree.Add(pkg, true); err != nil {
+			if _, err := importTree.AddRecursive(pkg); err != nil {
 				return err
 			}
 		}
@@ -81,13 +72,6 @@ highlight matching nodes. The allowed values for this flag are
 			}
 			importTree.Grow(1)
 			importTree.Prune()
-		}
-
-		if importsFlags.highlight != "" {
-			if err := validateHighlight(importsFlags.highlight); err != nil {
-				return err
-			}
-			importTree.SetHighlight(importsFlags.highlight)
 		}
 
 		logrus.Debug(importTree)
@@ -103,16 +87,8 @@ highlight matching nodes. The allowed values for this flag are
 	},
 }
 
-func validateHighlight(hl string) error {
-	if hl == highlightSingleParent {
-		return nil
-	}
-	return fmt.Errorf("unrecognized value for --%s: %s", highlightFlag, hl)
-}
-
 func init() {
 	Cmd.Flags().StringVar(&importsFlags.filter, filterFlag, "", "Regular expression filter to apply to the package list")
 	Cmd.Flags().StringVar(&importsFlags.prefix, prefixFlag, "", "Prefix filter to apply to the package list")
 	Cmd.Flags().StringVar(&importsFlags.single, singleFlag, "", "Pick a single package to show ancestors and descendants of")
-	Cmd.Flags().StringVar(&importsFlags.highlight, highlightFlag, "", "Highlight certain packages")
 }

@@ -9,15 +9,23 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Add attempts to add a package to the tree. This will run the package through
+func (t *Tree) Add(name string) (bool, error) {
+	return t.add(name, false, true)
+}
+
+func (t *Tree) AddRecursive(name string) (bool, error) {
+	return t.add(name, true, true)
+}
+
+// add attempts to add a package to the tree. This will run the package through
 // and applicable filters, and if it passes them, adds it to the tree. Then the
-// package's Imports list will also be filtered. Finally, if `recurse` is set,
-// Add will run on each of the package's (filtered) Imports.
-func (t *Tree) Add(name string, recurse bool) (err error) {
-	logrus.Debugf("adding %s", name)
+// package's Imports list will also be filtered. If `recurse` is true, add will
+// run on each of the package's (filtered) Imports. If `root` is true, the new
+// leaf will be marked as a "root" package
+func (t *Tree) add(name string, recurse, root bool) (bool, error) {
 	name = t.filter(name)
 	if name == "" {
-		return
+		return false, nil
 	}
 
 	displayName := strings.TrimPrefix(name, t.prefix)
@@ -29,29 +37,31 @@ func (t *Tree) Add(name string, recurse bool) (err error) {
 
 	if _, ok := t.packageMap[name]; ok {
 		// seen this package before, skip it
-		return nil
+		return false, nil
 	}
 
 	if strings.HasPrefix(name, "golang_org") {
 		displayName = path.Join("vendor", name)
 	}
 
+	logrus.Debugf("adding %s", name)
+
 	pkg, err := build.Import(name, "", 0)
 	if err != nil {
-		return err
+		return false, err
 	}
 	pkg.Imports = t.filterNames(pkg.Imports)
-	t.packageMap[name] = &Leaf{pkg: pkg, displayName: displayName}
+	t.packageMap[name] = &Leaf{pkg: pkg, displayName: displayName, root: root}
 
 	if recurse {
 		for _, childPkg := range t.packageMap[name].pkg.Imports {
-			if err = t.Add(childPkg, recurse); err != nil {
-				return err
+			if added, err := t.add(childPkg, recurse, false); err != nil {
+				return added, err
 			}
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 // Keep marks a single package in the tree for keeping.
@@ -60,28 +70,26 @@ func (t *Tree) Keep(name string) (err error) {
 	if !ok {
 		return fmt.Errorf("package %s not found", name)
 	}
-	leaf.keep = true
-	leaf.addAttribute("style", "bold")
-	leaf.addAttribute("color", "green")
+	leaf.keep = 2
 	t.packageMap[name] = leaf
 	return nil
 }
 
 // Grow expands the "tree" of kept packages by the given count. This works in
 // both directions (ancestors and descendants).
-func (t *Tree) Grow(count int) (err error) {
+func (t *Tree) Grow(count int) {
 	keepCount := 0
 	totalCount := 0
 	for _, leaf := range t.packageMap {
 		totalCount++
-		if leaf.keep {
+		if leaf.keep > 0 {
 			keepCount++
 		}
 	}
 	logrus.Debugf("Grow %d. Before: keep %d (total %d)", count, keepCount, totalCount)
 
 	if count <= 0 {
-		return nil
+		return
 	}
 
 	// make a copy of the packagemap
@@ -90,10 +98,10 @@ func (t *Tree) Grow(count int) (err error) {
 	// only mutate the copy, not the original
 	// grow down
 	for _, leaf := range t.packageMap {
-		if leaf.keep {
+		if leaf.keep == 2 {
 			for _, importName := range leaf.pkg.Imports {
 				if _, ok := copy[importName]; ok {
-					copy[importName].keep = true
+					copy[importName].keep = 1
 				}
 			}
 		}
@@ -103,8 +111,8 @@ func (t *Tree) Grow(count int) (err error) {
 	for name, leaf := range t.packageMap {
 		for _, importName := range leaf.pkg.Imports {
 			if upLeaf, ok := t.packageMap[importName]; ok {
-				if upLeaf.keep {
-					copy[name].keep = true
+				if upLeaf.keep == 2 {
+					copy[name].keep = 1
 				}
 			}
 		}
@@ -112,7 +120,7 @@ func (t *Tree) Grow(count int) (err error) {
 
 	keepCount = 0
 	for _, leaf := range copy {
-		if leaf.keep {
+		if leaf.keep > 0 {
 			keepCount++
 		}
 	}
@@ -120,20 +128,20 @@ func (t *Tree) Grow(count int) (err error) {
 
 	t.packageMap = copy
 
-	return t.Grow(count - 1)
+	t.Grow(count - 1)
 }
 
 // Prune removes all packages and package imports from the tree that are not
 // marked for keeping.
 func (t *Tree) Prune() {
 	for name, leaf := range t.packageMap {
-		if !leaf.keep {
+		if leaf.keep == 0 {
 			delete(t.packageMap, name)
 			continue
 		}
 		newImports := []string{}
 		for _, importName := range leaf.pkg.Imports {
-			if importLeaf, ok := t.packageMap[importName]; ok && importLeaf.keep {
+			if importLeaf, ok := t.packageMap[importName]; ok && importLeaf.keep > 0 {
 				newImports = append(newImports, importName)
 			}
 			leaf.pkg.Imports = newImports
@@ -177,4 +185,21 @@ func (t *Tree) copyPackageMap() map[string]*Leaf {
 	}
 
 	return copy
+}
+
+func (t *Tree) countImports() {
+	// reset import counts
+	for _, leaf := range t.packageMap {
+		leaf.importCount = 0
+	}
+
+	// count again
+	for _, leaf := range t.packageMap {
+		for _, importName := range leaf.pkg.Imports {
+			if importLeaf, ok := t.packageMap[importName]; ok {
+				importLeaf.importCount++
+				t.packageMap[importName] = importLeaf
+			}
+		}
+	}
 }

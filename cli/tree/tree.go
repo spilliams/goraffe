@@ -11,7 +11,6 @@ import (
 type Tree struct {
 	packageMap    map[string]*Leaf
 	filterPattern *regexp.Regexp
-	highlight     string
 	prefix        string
 }
 
@@ -42,54 +41,77 @@ func (t *Tree) SetPrefix(prefix string) {
 	t.prefix = prefix
 }
 
-// SetHighlight sets the tree's highlight mode.
-// "single-parent" will highlight packages that only have one importer
-func (t *Tree) SetHighlight(highlight string) {
-	t.highlight = highlight
-}
-
 // Leaf contains helpful information about each package, like the package
 // itself, a friendly display name, and whether or not the tree wants to keep
 // it.
 type Leaf struct {
 	attrs       map[string]string
 	displayName string
-	keep        bool
+	importCount int // the count of packages that import this one
+	keep        int // 2=keep by user request, 1=keep by grow
 	pkg         *build.Package
+	root        bool // whether this is one of the named root packages
 }
 
 func (l *Leaf) String() string {
 	keepString := ""
-	if l.keep {
+	if l.keep > 0 {
 		keepString = ", keep"
 	}
-	return fmt.Sprintf("Leaf{%s, %d imports%s}", l.displayName, len(l.pkg.Imports), keepString)
+	rootString := ""
+	if l.root {
+		rootString = ", root"
+	}
+	return fmt.Sprintf("Leaf{%s, %d down, %d up%s%s}",
+		l.displayName,
+		len(l.pkg.Imports),
+		l.importCount,
+		keepString,
+		rootString)
 }
 
 func (l *Leaf) copy() *Leaf {
 	newLeaf := Leaf{
 		attrs:       l.attrs,
 		displayName: l.displayName,
+		importCount: l.importCount,
 		keep:        l.keep,
 		pkg:         l.pkg,
+		root:        l.root,
 	}
 	return &newLeaf
 }
 
 func (l *Leaf) attributes() map[string]string {
 	attr := map[string]string{
-		"label": fmt.Sprintf("\"%s\"", l.displayName),
-		"shape": "box",
+		"label":     fmt.Sprintf("\"%s\"", l.displayName),
+		"shape":     "box",
+		"style":     "striped",
+		"fillcolor": l.fillColor(),
 	}
+
 	for k, v := range l.attrs {
 		attr[k] = v
 	}
 	return attr
 }
 
-func (l *Leaf) addAttribute(key, value string) {
-	if l.attrs == nil {
-		l.attrs = make(map[string]string)
+func (l *Leaf) fillColor() string {
+	fc := ""
+	if l.keep == 2 {
+		fc = "blue"
 	}
-	l.attrs[key] = value
+	if l.root {
+		if fc != "" {
+			fc += ":"
+		}
+		fc += "green"
+	}
+	if l.importCount == 1 {
+		if fc != "" {
+			fc += ":"
+		}
+		fc += "red"
+	}
+	return fmt.Sprintf("\"%s\"", fc)
 }
