@@ -4,6 +4,8 @@ Goraffe
 
 graphing with go. get it?
 
+.. image:: doc/goraffe.png
+
 Description
 ===========
 
@@ -12,6 +14,12 @@ old graphviz skillz, and perhaps make something useful to other Go developers.
 
 TODO
 ====
+
+1. any kind of tests
+2. add a legend to the graphviz output
+3. rewrite the command so that "repo" is the first arg, then "roots" (do I need
+   "keeps" to be separate from "roots"?). Allow for ellipse nodes that
+   correspond to folders instead of packages.
 
 call tracer
 -----------
