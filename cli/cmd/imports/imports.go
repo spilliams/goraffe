@@ -13,12 +13,14 @@ const (
 	filterFlag = "filter"
 	prefixFlag = "prefix"
 	singleFlag = "single"
+	growFlag   = "grow"
 )
 
 var importsFlags struct {
 	filter string
 	prefix string
 	single string
+	grow   int
 }
 
 var Cmd = &cobra.Command{
@@ -42,6 +44,10 @@ package's name to not include the prefix.
 If you provide the optional --` + singleFlag + ` flag, the graph will
 contain that package, its direct ancestors, and its direct descendants.
 
+If you provide the optional --` + growFlag + ` flag, and you have also provided
+the --` + singleFlag + `, the graph will not only keep the named package, it will
+"grow" the tree the number of times you specify. Default is 1, to show direct
+ancestors and descendants.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
@@ -70,7 +76,7 @@ contain that package, its direct ancestors, and its direct descendants.
 			if err := importTree.Keep(importsFlags.single); err != nil {
 				return err
 			}
-			importTree.Grow(1)
+			importTree.Grow(importsFlags.grow)
 			importTree.Prune()
 		}
 
@@ -91,4 +97,5 @@ func init() {
 	Cmd.Flags().StringVar(&importsFlags.filter, filterFlag, "", "Regular expression filter to apply to the package list")
 	Cmd.Flags().StringVar(&importsFlags.prefix, prefixFlag, "", "Prefix filter to apply to the package list")
 	Cmd.Flags().StringVar(&importsFlags.single, singleFlag, "", "Pick a single package to show ancestors and descendants of")
+	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept packages")
 }
