@@ -46,7 +46,7 @@ func (t *Tree) SetPrefix(prefix string) {
 // it.
 type Leaf struct {
 	attrs       map[string]string
-	broken      bool // whether this was something we could import or not
+	deps        []string
 	displayName string
 	importCount int // the count of packages that import this one
 	keep        bool
@@ -55,10 +55,23 @@ type Leaf struct {
 	userKeep    bool
 }
 
+// NewLeaf returns a new leaf.
+func NewLeaf(displayName string) *Leaf {
+	l := Leaf{
+		displayName: displayName,
+		importCount: 0,
+		keep:        false,
+		pkg:         nil,
+		root:        false,
+		userKeep:    false,
+	}
+	return &l
+}
+
 func (l *Leaf) copy() *Leaf {
 	newLeaf := Leaf{
 		attrs:       l.attrs,
-		broken:      l.broken,
+		deps:        l.deps,
 		displayName: l.displayName,
 		importCount: l.importCount,
 		keep:        l.keep,
@@ -81,12 +94,12 @@ func (l *Leaf) String() string {
 		rootString = ", root"
 	}
 	brokenString := ""
-	if l.broken {
+	if l.IsBroken() {
 		brokenString = ", broken"
 	}
 	return fmt.Sprintf("Leaf{%s, %d down, %d up%s%s%s}",
 		l.displayName,
-		len(l.pkg.Imports),
+		len(l.deps),
 		l.importCount,
 		keepString,
 		rootString,
@@ -94,9 +107,13 @@ func (l *Leaf) String() string {
 	)
 }
 
+func (l *Leaf) SetRoot(root bool) {
+	l.root = root
+}
+
 func (l *Leaf) attributes() map[string]string {
 	attr := map[string]string{
-		"label":     fmt.Sprintf("\"%s\n%d up %d down\"", l.displayName, l.importCount, len(l.pkg.Imports)),
+		"label":     fmt.Sprintf("\"%s\n%d up %d down\"", l.displayName, l.importCount, len(l.deps)),
 		"shape":     "box",
 		"style":     "striped",
 		"fillcolor": l.fillColor(),
@@ -111,18 +128,22 @@ func (l *Leaf) attributes() map[string]string {
 func (l *Leaf) fillColor() string {
 	fc := ""
 	if l.userKeep {
-		fc = "#76E1FE"
+		fc = UserKeepColor
 	}
 	if l.root {
-		fc = addColor(fc, "green")
+		fc = addColor(fc, RootColor)
 	}
 	if l.importCount == 1 {
-		fc = addColor(fc, "#fcd92d")
+		fc = addColor(fc, SingleParentColor)
 	}
-	if l.broken {
-		fc = addColor(fc, "red")
+	if l.IsBroken() {
+		fc = addColor(fc, BrokenColor)
 	}
 	return fmt.Sprintf("\"%s\"", fc)
+}
+
+func (l *Leaf) IsBroken() bool {
+	return l.pkg == nil
 }
 
 func addColor(colors, color string) string {

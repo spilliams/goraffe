@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spilliams/goraffe/cli/tree"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
