@@ -13,17 +13,10 @@ old graphviz skillz, and perhaps make something useful to other Go developers.
 TODO
 ====
 
-- ``goraffe imports`` add a ``--single <this>`` flag to get just the things that import this, and the things this imports
-- ``goraffe imports`` add an ``--outline <...>`` flag to outline certain nodes (such as "nodes only imported by one other package")
-- ``goraffe calltree <pkg> <func>`` can we introspect on function calls within the context of a package?
-
-.. code::
-
-   ./scripts/build.sh && goraffe -v imports github.com/spilliams/goraffe/cli --prefix github.com/spilliams/goraffe | dot -Tsvg > graph.svg && open graph.svg
-   ./scripts/build.sh && goraffe -v imports github.com/spilliams/goraffe/cli --prefix github.com/spilliams/goraffe --single github.com/spilliams/goraffe/cli/cmd/imports | dot -Tsvg > graph.svg && open graph.svg
-
 call tracer
 -----------
+
+``goraffe calltree <pkg> <func>`` can we introspect on function calls within the context of a package?
 
 I have one or more funcs I wish to trace
 I want to trace them back to roots (so the graph doesn't get so out of whack)
