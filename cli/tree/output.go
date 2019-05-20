@@ -39,7 +39,7 @@ func (t *Tree) PackageNames() []string {
 		}
 	}
 	r := make([]string, 0, len(names))
-	for name, _ := range names {
+	for name := range names {
 		r = append(r, name)
 	}
 	// maps are unsorted
@@ -140,10 +140,10 @@ func addLegend(g *gographviz.Graph) error {
 		return err
 	}
 	items := []legend{
-		legend{"broken", BrokenColor, "could not import this package's dependencies"},
-		legend{"root", RootColor, "root package (per your command-line args)"},
-		legend{"singleParent", SingleParentColor, "only imported by 1 other package"},
-		legend{"userKeep", UserKeepColor, "'kept' package (per your command-line flags)"},
+		{"broken", BrokenColor, "could not import this package's dependencies"},
+		{"root", RootColor, "root package (per your command-line args)"},
+		{"singleParent", SingleParentColor, "only imported by 1 other package"},
+		{"userKeep", UserKeepColor, "'kept' package (per your command-line flags)"},
 	}
 	for _, item := range items {
 		if err := addLegendItem(g, item); err != nil {
