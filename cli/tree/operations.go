@@ -41,29 +41,36 @@ func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) 
 		return false, nil
 	}
 
-	if strings.HasPrefix(name, "golang_org") {
-		name = path.Join("vendor", name)
-	}
-
 	logrus.Debugf("adding %s", name)
+	leaf := &Leaf{displayName: displayName, root: root, broken: true}
 
 	pkg, err := build.Import(name, "", 0)
 	if err != nil {
-		return false, err
+		// try vendoring it
+		name = path.Join("vendor", name)
+		pkg, err = build.Import(name, "", 0)
 	}
-	pkg.Imports = t.filterNames(pkg.Imports)
-	if includeTests {
-		pkg.Imports = append(pkg.Imports, t.filterNames(pkg.TestImports)...)
-	}
-	pkg.Imports = unique(pkg.Imports)
-	sort.Strings(pkg.Imports)
-	t.packageMap[name] = &Leaf{pkg: pkg, displayName: displayName, root: root}
 
-	if recurse {
-		for _, childPkg := range t.packageMap[name].pkg.Imports {
-			added, err := t.add(childPkg, recurse, false, includeTests)
-			if err != nil {
-				return added, err
+	t.packageMap[name] = leaf
+
+	// we can only continue with the ones that are not broken
+	if err == nil {
+		leaf.broken = false
+		pkg.Imports = t.filterNames(pkg.Imports)
+		if includeTests {
+			pkg.Imports = append(pkg.Imports, t.filterNames(pkg.TestImports)...)
+		}
+		pkg.Imports = unique(pkg.Imports)
+		sort.Strings(pkg.Imports)
+		leaf.pkg = pkg
+		t.packageMap[name] = leaf
+
+		if recurse {
+			for _, childPkg := range t.packageMap[name].pkg.Imports {
+				added, err := t.add(childPkg, recurse, false, includeTests)
+				if err != nil {
+					return added, err
+				}
 			}
 		}
 	}

@@ -46,6 +46,7 @@ func (t *Tree) SetPrefix(prefix string) {
 // it.
 type Leaf struct {
 	attrs       map[string]string
+	broken      bool // whether this was something we could import or not
 	displayName string
 	importCount int // the count of packages that import this one
 	keep        bool
@@ -57,6 +58,7 @@ type Leaf struct {
 func (l *Leaf) copy() *Leaf {
 	newLeaf := Leaf{
 		attrs:       l.attrs,
+		broken:      l.broken,
 		displayName: l.displayName,
 		importCount: l.importCount,
 		keep:        l.keep,
@@ -78,12 +80,18 @@ func (l *Leaf) String() string {
 	if l.root {
 		rootString = ", root"
 	}
-	return fmt.Sprintf("Leaf{%s, %d down, %d up%s%s}",
+	brokenString := ""
+	if l.broken {
+		brokenString = ", broken"
+	}
+	return fmt.Sprintf("Leaf{%s, %d down, %d up%s%s%s}",
 		l.displayName,
 		len(l.pkg.Imports),
 		l.importCount,
 		keepString,
-		rootString)
+		rootString,
+		brokenString,
+	)
 }
 
 func (l *Leaf) attributes() map[string]string {
@@ -106,16 +114,21 @@ func (l *Leaf) fillColor() string {
 		fc = "#76E1FE"
 	}
 	if l.root {
-		if fc != "" {
-			fc += ":"
-		}
-		fc += "green"
+		fc = addColor(fc, "green")
 	}
 	if l.importCount == 1 {
-		if fc != "" {
-			fc += ":"
-		}
-		fc += "#fcd92d"
+		fc = addColor(fc, "#fcd92d")
+	}
+	if l.broken {
+		fc = addColor(fc, "red")
 	}
 	return fmt.Sprintf("\"%s\"", fc)
+}
+
+func addColor(colors, color string) string {
+	if colors != "" {
+		colors += ":"
+	}
+	colors += color
+	return colors
 }
