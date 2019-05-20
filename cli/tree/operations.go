@@ -42,7 +42,7 @@ func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) 
 	}
 
 	if strings.HasPrefix(name, "golang_org") {
-		displayName = path.Join("vendor", name)
+		name = path.Join("vendor", name)
 	}
 
 	logrus.Debugf("adding %s", name)
