@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/build"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -54,6 +55,8 @@ func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) 
 	if includeTests {
 		pkg.Imports = append(pkg.Imports, t.filterNames(pkg.TestImports)...)
 	}
+	pkg.Imports = unique(pkg.Imports)
+	sort.Strings(pkg.Imports)
 	t.packageMap[name] = &Leaf{pkg: pkg, displayName: displayName, root: root}
 
 	if recurse {
@@ -68,13 +71,33 @@ func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) 
 	return true, nil
 }
 
+func unique(st []string) []string {
+	var r []string
+	for _, s := range st {
+		if !contains(r, s) {
+			r = append(r, s)
+		}
+	}
+	return r
+}
+
+func contains(st []string, s string) bool {
+	for _, cmp := range st {
+		if s == cmp {
+			return true
+		}
+	}
+	return false
+}
+
 // Keep marks a single package in the tree for keeping.
 func (t *Tree) Keep(name string) (err error) {
 	leaf, ok := t.packageMap[name]
 	if !ok {
 		return fmt.Errorf("package %s not found", name)
 	}
-	leaf.keep = 2
+	leaf.keep = true
+	leaf.userKeep = true
 	t.packageMap[name] = leaf
 	return nil
 }
@@ -86,7 +109,7 @@ func (t *Tree) Grow(count int) {
 	totalCount := 0
 	for _, leaf := range t.packageMap {
 		totalCount++
-		if leaf.keep > 0 {
+		if leaf.keep {
 			keepCount++
 		}
 	}
@@ -102,10 +125,10 @@ func (t *Tree) Grow(count int) {
 	// only mutate the copy, not the original
 	// grow down
 	for _, leaf := range t.packageMap {
-		if leaf.keep == 2 {
+		if leaf.keep {
 			for _, importName := range leaf.pkg.Imports {
 				if _, ok := copy[importName]; ok {
-					copy[importName].keep = 1
+					copy[importName].keep = true
 				}
 			}
 		}
@@ -115,8 +138,8 @@ func (t *Tree) Grow(count int) {
 	for name, leaf := range t.packageMap {
 		for _, importName := range leaf.pkg.Imports {
 			if upLeaf, ok := t.packageMap[importName]; ok {
-				if upLeaf.keep == 2 {
-					copy[name].keep = 1
+				if upLeaf.keep {
+					copy[name].keep = true
 				}
 			}
 		}
@@ -124,7 +147,7 @@ func (t *Tree) Grow(count int) {
 
 	keepCount = 0
 	for _, leaf := range copy {
-		if leaf.keep > 0 {
+		if leaf.keep {
 			keepCount++
 		}
 	}
@@ -139,13 +162,13 @@ func (t *Tree) Grow(count int) {
 // marked for keeping.
 func (t *Tree) Prune() {
 	for name, leaf := range t.packageMap {
-		if leaf.keep == 0 {
+		if !leaf.keep {
 			delete(t.packageMap, name)
 			continue
 		}
 		newImports := []string{}
 		for _, importName := range leaf.pkg.Imports {
-			if importLeaf, ok := t.packageMap[importName]; ok && importLeaf.keep > 0 {
+			if importLeaf, ok := t.packageMap[importName]; ok && importLeaf.keep {
 				newImports = append(newImports, importName)
 			}
 			leaf.pkg.Imports = newImports

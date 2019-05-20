@@ -48,14 +48,30 @@ type Leaf struct {
 	attrs       map[string]string
 	displayName string
 	importCount int // the count of packages that import this one
-	keep        int // 2=keep by user request, 1=keep by grow
+	keep        bool
 	pkg         *build.Package
 	root        bool // whether this is one of the named root packages
+	userKeep    bool
+}
+
+func (l *Leaf) copy() *Leaf {
+	newLeaf := Leaf{
+		attrs:       l.attrs,
+		displayName: l.displayName,
+		importCount: l.importCount,
+		keep:        l.keep,
+		pkg:         l.pkg,
+		root:        l.root,
+		userKeep:    l.userKeep,
+	}
+	return &newLeaf
 }
 
 func (l *Leaf) String() string {
 	keepString := ""
-	if l.keep > 0 {
+	if l.userKeep {
+		keepString = ", user-keep"
+	} else if l.keep {
 		keepString = ", keep"
 	}
 	rootString := ""
@@ -70,21 +86,9 @@ func (l *Leaf) String() string {
 		rootString)
 }
 
-func (l *Leaf) copy() *Leaf {
-	newLeaf := Leaf{
-		attrs:       l.attrs,
-		displayName: l.displayName,
-		importCount: l.importCount,
-		keep:        l.keep,
-		pkg:         l.pkg,
-		root:        l.root,
-	}
-	return &newLeaf
-}
-
 func (l *Leaf) attributes() map[string]string {
 	attr := map[string]string{
-		"label":     fmt.Sprintf("\"%s\"", l.displayName),
+		"label":     fmt.Sprintf("\"%s\n%d up %d down\"", l.displayName, l.importCount, len(l.pkg.Imports)),
 		"shape":     "box",
 		"style":     "striped",
 		"fillcolor": l.fillColor(),
@@ -98,8 +102,8 @@ func (l *Leaf) attributes() map[string]string {
 
 func (l *Leaf) fillColor() string {
 	fc := ""
-	if l.keep == 2 {
-		fc = "blue"
+	if l.userKeep {
+		fc = "#76E1FE"
 	}
 	if l.root {
 		if fc != "" {
@@ -111,7 +115,7 @@ func (l *Leaf) fillColor() string {
 		if fc != "" {
 			fc += ":"
 		}
-		fc += "red"
+		fc += "#fcd92d"
 	}
 	return fmt.Sprintf("\"%s\"", fc)
 }
