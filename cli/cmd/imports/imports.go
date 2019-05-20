@@ -2,6 +2,8 @@ package imports
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spilliams/goraffe/cli/tree"
@@ -9,18 +11,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// the names of the flags
 const (
 	filterFlag = "filter"
 	prefixFlag = "prefix"
 	singleFlag = "single"
 	growFlag   = "grow"
+	testsFlag  = "includeTests"
 )
+
+var flagsDocs = map[string]string{
+	filterFlag: "the graph will not include packages that don't match that filter",
+	prefixFlag: "the graph will not include packages that have that prefix AND the graph\nwill truncate each package's name to exclude the prefix",
+	singleFlag: "the graph will contain that package, its direct ancestors, and its\ndirect descendants",
+	growFlag:   "used in conjunction with --" + singleFlag + ", the graph will \"grow\"\nthe tree the number of times you specify",
+	testsFlag:  "the tree will include imports from Go test files",
+}
 
 var importsFlags struct {
 	filter string
 	prefix string
 	single string
 	grow   int
+	tests  bool
+}
+
+func optionsDoc() string {
+	options := []string{filterFlag, prefixFlag, singleFlag, growFlag, testsFlag}
+	sort.Strings(options)
+	r := ""
+	for _, option := range options {
+		doc := flagsDocs[option]
+		docLines := strings.Split(doc, "\n")
+		doc = strings.Join(docLines, "\n\t\t")
+		r += fmt.Sprintf("\t--%s\n\t\t%s\n", option, doc)
+	}
+	return r
 }
 
 var Cmd = &cobra.Command{
@@ -34,20 +60,9 @@ the graph.
 The graph will include everything the roots import, recursively. The graph will
 include the entire dependency chain of the packages you list.
 
-If you provide the optional --` + filterFlag + ` flag, the graph will not
-include packages that don't match that filter.
+Options:
+` + optionsDoc() + `
 
-If you provide the optional --` + prefixFlag + ` flag, the graph will not
-include packages that have that prefix AND the graph will truncate each
-package's name to not include the prefix.
-
-If you provide the optional --` + singleFlag + ` flag, the graph will
-contain that package, its direct ancestors, and its direct descendants.
-
-If you provide the optional --` + growFlag + ` flag, and you have also provided
-the --` + singleFlag + `, the graph will not only keep the named package, it will
-"grow" the tree the number of times you specify. Default is 1, to show direct
-ancestors and descendants.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
@@ -66,7 +81,7 @@ ancestors and descendants.
 		}
 
 		for _, pkg := range args {
-			if _, err := importTree.AddRecursive(pkg); err != nil {
+			if _, err := importTree.AddRecursive(pkg, importsFlags.tests); err != nil {
 				return err
 			}
 		}
@@ -98,4 +113,5 @@ func init() {
 	Cmd.Flags().StringVar(&importsFlags.prefix, prefixFlag, "", "Prefix filter to apply to the package list")
 	Cmd.Flags().StringVar(&importsFlags.single, singleFlag, "", "Pick a single package to show ancestors and descendants of")
 	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept packages")
+	Cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files")
 }

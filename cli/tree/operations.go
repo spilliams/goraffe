@@ -9,20 +9,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (t *Tree) Add(name string) (bool, error) {
-	return t.add(name, false, true)
+func (t *Tree) Add(name string, includeTests bool) (bool, error) {
+	return t.add(name, false, true, includeTests)
 }
 
-func (t *Tree) AddRecursive(name string) (bool, error) {
-	return t.add(name, true, true)
+func (t *Tree) AddRecursive(name string, includeTests bool) (bool, error) {
+	return t.add(name, true, true, includeTests)
 }
 
 // add attempts to add a package to the tree. This will run the package through
 // and applicable filters, and if it passes them, adds it to the tree. Then the
 // package's Imports list will also be filtered. If `recurse` is true, add will
 // run on each of the package's (filtered) Imports. If `root` is true, the new
-// leaf will be marked as a "root" package
-func (t *Tree) add(name string, recurse, root bool) (bool, error) {
+// leaf will be marked as a "root" package.
+func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) {
 	name = t.filter(name)
 	if name == "" {
 		return false, nil
@@ -51,11 +51,15 @@ func (t *Tree) add(name string, recurse, root bool) (bool, error) {
 		return false, err
 	}
 	pkg.Imports = t.filterNames(pkg.Imports)
+	if includeTests {
+		pkg.Imports = append(pkg.Imports, t.filterNames(pkg.TestImports)...)
+	}
 	t.packageMap[name] = &Leaf{pkg: pkg, displayName: displayName, root: root}
 
 	if recurse {
 		for _, childPkg := range t.packageMap[name].pkg.Imports {
-			if added, err := t.add(childPkg, recurse, false); err != nil {
+			added, err := t.add(childPkg, recurse, false, includeTests)
+			if err != nil {
 				return added, err
 			}
 		}
