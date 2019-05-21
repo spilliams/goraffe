@@ -2,6 +2,7 @@ package tree
 
 import (
 	"fmt"
+	"path"
 	"sort"
 
 	"github.com/awalterschulze/gographviz"
@@ -69,7 +70,7 @@ func (t *Tree) Graphviz() (string, error) {
 		names[packageName] = fmt.Sprintf("N%d", i)
 	}
 
-	logrus.Debugf("package names: %v", packageNames)
+	logrus.Debugf("package names: %v", names)
 
 	edges := t.Broaden()
 
@@ -86,12 +87,18 @@ func (t *Tree) Graphviz() (string, error) {
 		return "", err
 	}
 
+	nodesAdded := []string{}
+
 	// add package nodes
 	for packageName, nodeName := range names {
 		leaf, ok := t.packageMap[packageName]
 		if !ok {
-			logrus.Warnf("couldn't find %s in package map", packageName)
-			continue
+			packageName = path.Join("vendor", packageName)
+			leaf, ok = t.packageMap[packageName]
+			if !ok {
+				logrus.Warnf("couldn't find %s in package map", packageName)
+				continue
+			}
 		}
 		if leaf == nil {
 			continue
@@ -99,17 +106,20 @@ func (t *Tree) Graphviz() (string, error) {
 		if err := g.AddNode(packageGraphName, nodeName, leaf.attributes()); err != nil {
 			return "", err
 		}
+		nodesAdded = append(nodesAdded, nodeName)
 	}
 
 	// add import edges
 	for _, edge := range edges {
 		for left, right := range edge {
-			nodeLeft := names[left]
-			nodeRight := names[right]
-			if err := g.AddEdge(nodeLeft, nodeRight, true, map[string]string{
-				"weight": "1",
-			}); err != nil {
-				return "", err
+			if contains(nodesAdded, names[left]) && contains(nodesAdded, names[right]) {
+				nodeLeft := names[left]
+				nodeRight := names[right]
+				if err := g.AddEdge(nodeLeft, nodeRight, true, map[string]string{
+					"weight": "1",
+				}); err != nil {
+					return "", err
+				}
 			}
 		}
 	}
