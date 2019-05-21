@@ -14,8 +14,9 @@ var Verbose bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "goraffe <command>",
-	Short: "A tool for graphing go packages",
+	Use:     "goraffe <command>",
+	Short:   "A tool for graphing go packages",
+	Version: "0.2.0-beta",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
