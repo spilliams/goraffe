@@ -3,42 +3,30 @@ package tree
 import (
 	"fmt"
 	"go/build"
-	"regexp"
 )
 
 // Tree isn't actually a tree structure, but maintains a map of package names
 // to Leaves.
 type Tree struct {
-	packageMap    map[string]*Leaf
-	filterPattern *regexp.Regexp
-	prefix        string
+	packageMap      map[string]*Leaf
+	parentDirectory string
+	includeTests    bool
 }
 
 // NewTree returns a new, empty Tree
-func NewTree() *Tree {
+func NewTree(parentDirectory string) *Tree {
 	t := Tree{
-		packageMap: make(map[string]*Leaf),
+		packageMap:      make(map[string]*Leaf),
+		parentDirectory: parentDirectory,
 	}
 
 	return &t
 }
 
-// SetFilter sets the tree's filter. Any time a package is about to be added to
-// the tree, it gets checked by this filter first. If it doesn't match the
-// regular expression, it won't get added.
-func (t *Tree) SetFilter(filter string) (err error) {
-	if t.filterPattern, err = regexp.Compile(filter); err != nil {
-		return err
-	}
-	return nil
-}
-
-// SetPrefix sets the tree's prefix. Any time a package is about to be added to
-// the tree, it gets checked for this prefix. If it doesn't have the prefix, it
-// won't get added. Additionally, if the prefix is set, all display names of
-// the tree's packages will omit the prefix for clarity.
-func (t *Tree) SetPrefix(prefix string) {
-	t.prefix = prefix
+// SetIncludeTests modifies the receiver to include or exclude imports from Go
+// test files.
+func (t *Tree) SetIncludeTests(includeTests bool) {
+	t.includeTests = includeTests
 }
 
 // Leaf contains helpful information about each package, like the package
@@ -107,13 +95,14 @@ func (l *Leaf) String() string {
 	)
 }
 
+// SetRoot sets whether the receiver is a root or not.
 func (l *Leaf) SetRoot(root bool) {
 	l.root = root
 }
 
 func (l *Leaf) attributes() map[string]string {
 	attr := map[string]string{
-		"label":     fmt.Sprintf("\"%s\n%d up %d down\"", l.displayName, l.importCount, len(l.deps)),
+		"label":     fmt.Sprintf("\"%s\\n%d up %d down\"", l.displayName, l.importCount, len(l.deps)),
 		"shape":     "box",
 		"style":     "striped",
 		"fillcolor": l.fillColor(),
@@ -142,6 +131,7 @@ func (l *Leaf) fillColor() string {
 	return fmt.Sprintf("\"%s\"", fc)
 }
 
+// IsBroken returns if the receiver is broken or not
 func (l *Leaf) IsBroken() bool {
 	return l.pkg == nil
 }
