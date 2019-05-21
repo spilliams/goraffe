@@ -11,6 +11,7 @@ const (
 	SingleParentColor = Orange
 	UserKeepColor     = Blue
 
-	topGraphName    = "top"
-	legendGraphName = "cluster_legend"
+	topGraphName     = "top"
+	legendGraphName  = "cluster_legend"
+	packageGraphName = "packages"
 )

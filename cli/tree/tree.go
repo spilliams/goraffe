@@ -117,6 +117,7 @@ func (l *Leaf) attributes() map[string]string {
 		"shape":     "box",
 		"style":     "striped",
 		"fillcolor": l.fillColor(),
+		"rank":      l.rank(),
 	}
 
 	for k, v := range l.attrs {
@@ -140,6 +141,13 @@ func (l *Leaf) fillColor() string {
 		fc = addColor(fc, BrokenColor)
 	}
 	return fmt.Sprintf("\"%s\"", fc)
+}
+
+func (l *Leaf) rank() string {
+	if l.root {
+		return "min"
+	}
+	return "sink"
 }
 
 func (l *Leaf) IsBroken() bool {

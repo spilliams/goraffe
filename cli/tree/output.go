@@ -82,6 +82,12 @@ func (t *Tree) Graphviz() (string, error) {
 	if err := g.SetDir(true); err != nil {
 		return "", err
 	}
+	if err := g.AddSubGraph(topGraphName, packageGraphName, map[string]string{
+		"rank":    "min",
+		"rankdir": "TB",
+	}); err != nil {
+		return "", err
+	}
 
 	// add package nodes
 	for packageName, nodeName := range names {
@@ -93,7 +99,7 @@ func (t *Tree) Graphviz() (string, error) {
 		if leaf == nil {
 			continue
 		}
-		if err := g.AddNode(topGraphName, nodeName, leaf.attributes()); err != nil {
+		if err := g.AddNode(packageGraphName, nodeName, leaf.attributes()); err != nil {
 			return "", err
 		}
 	}
@@ -134,6 +140,7 @@ func addLegend(g *gographviz.Graph) error {
 	err := g.AddSubGraph(topGraphName, legendGraphName, map[string]string{
 		"label":   "Legend",
 		"style":   "solid",
+		"rank":    "sink",
 		"rankdir": "LR",
 	})
 	if err != nil {
