@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spilliams/goraffe/cli/cmd/imports"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spilliams/goraffe/cli/cmd/imports"
 )
 
 var Verbose bool

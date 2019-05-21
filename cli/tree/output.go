@@ -76,14 +76,13 @@ func (t *Tree) Graphviz() (string, error) {
 
 	logrus.Debugf("edges: %v", edges)
 
+	topGraphName := fmt.Sprintf("\"%s\"", t.parentDirectory)
+
 	g := gographviz.NewGraph()
 	if err := g.SetName(topGraphName); err != nil {
 		return "", err
 	}
 	if err := g.SetDir(true); err != nil {
-		return "", err
-	}
-	if err := g.AddSubGraph(topGraphName, packageGraphName, map[string]string{}); err != nil {
 		return "", err
 	}
 
@@ -103,7 +102,7 @@ func (t *Tree) Graphviz() (string, error) {
 		if leaf == nil {
 			continue
 		}
-		if err := g.AddNode(packageGraphName, nodeName, leaf.attributes()); err != nil {
+		if err := g.AddNode(topGraphName, nodeName, leaf.attributes()); err != nil {
 			return "", err
 		}
 		nodesAdded = append(nodesAdded, nodeName)
@@ -137,55 +136,31 @@ func (t *Tree) Graphviz() (string, error) {
 	return ast.String(), nil
 }
 
+func (t *Tree) countImports() {
+	// reset import counts
+	for _, leaf := range t.packageMap {
+		if leaf != nil {
+			leaf.importCount = 0
+		}
+	}
+
+	// count again
+	for _, leaf := range t.packageMap {
+		if leaf == nil {
+			continue
+		}
+		for _, importName := range leaf.deps {
+			importLeaf, ok := t.packageMap[importName]
+			if ok && importLeaf != nil {
+				importLeaf.importCount++
+				t.packageMap[importName] = importLeaf
+			}
+		}
+	}
+}
+
 type legend struct {
 	key       string
 	fillcolor string
 	doc       string
 }
-
-// func addLegend(g *gographviz.Graph) error {
-// 	err := g.AddSubGraph(topGraphName, legendGraphName, map[string]string{
-// 		"label":   "Legend",
-// 		"style":   "solid",
-// 	})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	items := []legend{
-// 		{"broken", BrokenColor, "could not import this package's dependencies"},
-// 		{"root", RootColor, "root package (per your command-line args)"},
-// 		{"singleParent", SingleParentColor, "only imported by 1 other package"},
-// 		{"userKeep", UserKeepColor, "'kept' package (per your command-line flags)"},
-// 	}
-// 	for _, item := range items {
-// 		if err := addLegendItem(g, item); err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func addLegendItem(g *gographviz.Graph, l legend) error {
-// 	if err := g.AddNode(legendGraphName, l.key+"Color", map[string]string{
-// 		"label":     "package",
-// 		"shape":     "box",
-// 		"style":     "filled",
-// 		"fillcolor": fmt.Sprintf("\"%s\"", l.fillcolor),
-// 	}); err != nil {
-// 		return err
-// 	}
-// 	if err := g.AddNode(legendGraphName, l.key+"Doc", map[string]string{
-// 		"label": fmt.Sprintf("\"%s\"", l.doc),
-// 		"shape": "plaintext",
-// 	}); err != nil {
-// 		return err
-// 	}
-// 	if err := g.AddEdge(l.key+"Color", l.key+"Doc", true, map[string]string{
-// 		"style": "invis",
-// 	}); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }

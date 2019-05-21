@@ -22,6 +22,7 @@ func (t *Tree) AddRecursive(name string) (bool, error) {
 }
 
 func (t *Tree) add(name string, recurse, root bool) (bool, error) {
+	logrus.Debugf("add(%s, %v, %v)", name, recurse, root)
 	displayName := strings.TrimPrefix(name, t.parentDirectory)
 	name = path.Join(t.parentDirectory, displayName)
 
@@ -42,9 +43,9 @@ func (t *Tree) add(name string, recurse, root bool) (bool, error) {
 	}
 
 	// not skipping this package, make a new leaf for it
+	logrus.Debugf("adding %s", displayName)
 	leaf := NewLeaf(displayName)
 	leaf.SetRoot(root)
-	t.packageMap[name] = leaf
 
 	// try importing it
 	pkg, err := build.Import(name, "", 0)
@@ -122,8 +123,10 @@ func contains(st []string, s string) bool {
 	return false
 }
 
-// Keep marks a single package in the tree for keeping.
-func (t *Tree) Keep(name string) (err error) {
+// Keep marks a single package in the receiver for keeping.
+// Should only be used as a result of user action (e.g. not for automatic
+// "grow" operations)
+func (t *Tree) Keep(name string) error {
 	leaf, ok := t.packageMap[name]
 	if !ok {
 		return fmt.Errorf("package %s not found", name)
@@ -212,29 +215,6 @@ func (t *Tree) Prune() {
 			}
 			leaf.deps = newDeps
 			t.packageMap[name] = leaf
-		}
-	}
-}
-
-func (t *Tree) countImports() {
-	// reset import counts
-	for _, leaf := range t.packageMap {
-		if leaf != nil {
-			leaf.importCount = 0
-		}
-	}
-
-	// count again
-	for _, leaf := range t.packageMap {
-		if leaf == nil {
-			continue
-		}
-		for _, importName := range leaf.deps {
-			importLeaf, ok := t.packageMap[importName]
-			if ok && importLeaf != nil {
-				importLeaf.importCount++
-				t.packageMap[importName] = importLeaf
-			}
 		}
 	}
 }

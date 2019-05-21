@@ -1,5 +1,6 @@
 package tree
 
+// just some constants for use with the tree output
 const (
 	Blue   = "#76E1FE"
 	Green  = "green"
@@ -10,8 +11,4 @@ const (
 	RootColor         = Green
 	SingleParentColor = Orange
 	UserKeepColor     = Blue
-
-	topGraphName = "top"
-	// legendGraphName  = "cluster_legend"
-	packageGraphName = "packages"
 )

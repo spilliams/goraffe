@@ -16,13 +16,16 @@ type Tree struct {
 // NewTree returns a new, empty Tree
 func NewTree(parentDirectory string) *Tree {
 	t := Tree{
-		packageMap: make(map[string]*Leaf),
+		packageMap:      make(map[string]*Leaf),
+		parentDirectory: parentDirectory,
 	}
 
 	return &t
 }
 
-func (t *Tree) IncludeTests(includeTests bool) {
+// SetIncludeTests modifies the receiver to include or exclude imports from Go
+// test files.
+func (t *Tree) SetIncludeTests(includeTests bool) {
 	t.includeTests = includeTests
 }
 
@@ -92,13 +95,14 @@ func (l *Leaf) String() string {
 	)
 }
 
+// SetRoot sets whether the receiver is a root or not.
 func (l *Leaf) SetRoot(root bool) {
 	l.root = root
 }
 
 func (l *Leaf) attributes() map[string]string {
 	attr := map[string]string{
-		"label":     fmt.Sprintf("\"%s\n%d up %d down\"", l.displayName, l.importCount, len(l.deps)),
+		"label":     fmt.Sprintf("\"%s\\n%d up %d down\"", l.displayName, l.importCount, len(l.deps)),
 		"shape":     "box",
 		"style":     "striped",
 		"fillcolor": l.fillColor(),
@@ -127,6 +131,7 @@ func (l *Leaf) fillColor() string {
 	return fmt.Sprintf("\"%s\"", fc)
 }
 
+// IsBroken returns if the receiver is broken or not
 func (l *Leaf) IsBroken() bool {
 	return l.pkg == nil
 }

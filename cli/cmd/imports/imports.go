@@ -29,9 +29,10 @@ func init() {
 }
 
 var Cmd = &cobra.Command{
-	Use:   "imports <parent directory> <root packages>",
-	Args:  validateImportsArgs,
-	Short: "Visualize package imports",
+	Use:     "imports <parent directory> <root packages>",
+	Args:    validateImportsArgs,
+	Example: "goraffe -v imports github.com/spilliams/goraffe cli",
+	Short:   "Visualize package imports",
 	Long: `Visualize package imports.
 	
 The parent directory you provide will be treated as a boundary--packages from
@@ -41,11 +42,16 @@ package names. The root packages can be named with or without the parent
 directory prefix.
 
 The root packages you list as arguments to this command form the start of the
-import-dependency tree. How the tree develops and is output is determined by
-the other flags you provide this command.
+import-dependency tree. How the tree develops is determined by the other flags
+you provide this command. By default, the roots' dependencies are added
+recursively. The output will include the entire dependency chain of the roots,
+bounded by the parent directory.
 
-By default, the output will include everything the roots import, recursively.
-The graph will include the entire dependency chain of the packages you list.
+This command outputs DOT language, to be used with a graphviz tool such as
+` + "`dot`" + `. For more information, see https://graphviz.org/.
+An example of using the output:
+
+	goraffe imports github.com/spilliams/goraffe cli | dot -Tsvg > graph.svg
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,7 +66,7 @@ The graph will include the entire dependency chain of the packages you list.
 		}
 
 		if importsFlags.tests {
-			importTree.IncludeTests(true)
+			importTree.SetIncludeTests(true)
 		}
 
 		for _, name := range importsFlags.keeps {
