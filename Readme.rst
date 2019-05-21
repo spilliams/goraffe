@@ -12,6 +12,16 @@ Description
 Very much a work in progress. I'm using this to learn about go tools, brush off
 old graphviz skillz, and perhaps make something useful to other Go developers.
 
+This codebase does not currently use go modules, and is meant to work only
+inside a GOPATH, and run against other repos in the GOPATH.
+
+Installation
+============
+
+.. code-block:: console
+
+    $ go get -u github.com/spilliams/goraffe/goraffe
+
 TODO
 ====
 

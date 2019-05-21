@@ -3,7 +3,7 @@ package imports
 import (
 	"fmt"
 
-	"github.com/spilliams/goraffe/cli/tree"
+	"github.com/spilliams/goraffe/goraffe/tree"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -31,7 +31,7 @@ func init() {
 var Cmd = &cobra.Command{
 	Use:     "imports <parent directory> <root packages>",
 	Args:    validateImportsArgs,
-	Example: "goraffe -v imports github.com/spilliams/goraffe cli",
+	Example: "goraffe -v imports github.com/spilliams/goraffe goraffe",
 	Short:   "Visualize package imports",
 	Long: `Visualize package imports.
 	
@@ -51,7 +51,7 @@ This command outputs DOT language, to be used with a graphviz tool such as
 ` + "`dot`" + `. For more information, see https://graphviz.org/.
 An example of using the output:
 
-	goraffe imports github.com/spilliams/goraffe cli | dot -Tsvg > graph.svg
+	goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
