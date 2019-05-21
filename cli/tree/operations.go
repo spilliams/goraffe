@@ -10,56 +10,58 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (t *Tree) Add(name string, includeTests bool) (bool, error) {
-	return t.add(name, false, true, includeTests)
+// Add will attempt to add a package to the tree as a "root".
+func (t *Tree) Add(name string) (bool, error) {
+	return t.add(name, false, true)
 }
 
-func (t *Tree) AddRecursive(name string, includeTests bool) (bool, error) {
-	return t.add(name, true, true, includeTests)
+// AddRecursive will attempt to add a package to the tree as a "root". Then, it
+// will recursively call itself on all of that package's imports.
+func (t *Tree) AddRecursive(name string) (bool, error) {
+	return t.add(name, true, true)
 }
 
-// add attempts to add a package to the tree. This will run the package through
-// and applicable filters, and if it passes them, adds it to the tree. Then the
-// package's Imports list will also be filtered. If `recurse` is true, add will
-// run on each of the package's (filtered) Imports. If `root` is true, the new
-// leaf will be marked as a "root" package.
-func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) {
+func (t *Tree) add(name string, recurse, root bool) (bool, error) {
+	displayName := strings.TrimPrefix(name, t.parentDirectory)
+	name = path.Join(t.parentDirectory, displayName)
+
+	// make sure the name passes the filter
 	name = t.filter(name)
 	if name == "" {
 		return false, nil
 	}
 
-	displayName := strings.TrimPrefix(name, t.prefix)
-
+	// C isn't really a package
 	if name == "C" {
-		// C isn't really a package
 		t.packageMap["C"] = nil
 	}
 
+	// skip the ones we've seen before
 	if _, ok := t.packageMap[name]; ok {
-		// seen this package before, skip it
 		return false, nil
 	}
 
-	// logrus.Debugf("adding %s", name)
+	// not skipping this package, make a new leaf for it
 	leaf := NewLeaf(displayName)
 	leaf.SetRoot(root)
+	t.packageMap[name] = leaf
 
+	// try importing it
 	pkg, err := build.Import(name, "", 0)
 	if err != nil {
-		// try vendoring it
+		// try importing it from vendor...
 		name = path.Join("vendor", name)
 		pkg, err = build.Import(name, "", 0)
 	}
+	// if we failed to import it, the leaf remains as a "broken" leaf
 
-	t.packageMap[name] = leaf
-
-	// we can only continue with the ones that are not broken
+	// continue with the leaves that we did find
 	if err == nil {
 		leaf.pkg = pkg
 
+		// make the list of packages this leaf imports
 		deps := t.filterNames(pkg.Imports)
-		if includeTests {
+		if t.includeTests {
 			deps = append(deps, t.filterNames(pkg.TestImports)...)
 		}
 		deps = unique(deps)
@@ -67,9 +69,10 @@ func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) 
 		leaf.deps = deps
 		t.packageMap[name] = leaf
 
+		// go one level deeper...
 		if recurse {
-			for _, childPkg := range t.packageMap[name].deps {
-				added, err := t.add(childPkg, recurse, false, includeTests)
+			for _, childPkg := range deps {
+				added, err := t.add(childPkg, recurse, false)
 				if err != nil {
 					return added, err
 				}
@@ -78,6 +81,31 @@ func (t *Tree) add(name string, recurse, root, includeTests bool) (bool, error) 
 	}
 
 	return true, nil
+}
+
+func (t *Tree) filterNames(names []string) []string {
+	r := []string{}
+	for _, name := range names {
+		name = t.filter(name)
+		if name != "" {
+			r = append(r, name)
+		}
+	}
+	return r
+}
+
+func (t *Tree) filter(name string) string {
+	if t.filterPattern != nil && !t.filterPattern.MatchString(name) {
+		// doesn't match the filter, skip it
+		return ""
+	}
+
+	if !t.includeExternals && !strings.HasPrefix(name, t.parentDirectory) {
+		// doesn't have the prefix, skip it
+		return ""
+	}
+
+	return name
 }
 
 func unique(st []string) []string {
@@ -114,15 +142,7 @@ func (t *Tree) Keep(name string) (err error) {
 // Grow expands the "tree" of kept packages by the given count. This works in
 // both directions (ancestors and descendants).
 func (t *Tree) Grow(count int) {
-	keepCount := 0
-	totalCount := 0
-	for _, leaf := range t.packageMap {
-		totalCount++
-		if leaf.keep {
-			keepCount++
-		}
-	}
-	logrus.Debugf("Grow %d. Before: keep %d (total %d)", count, keepCount, totalCount)
+	t.printGrow(count, "Before")
 
 	if count <= 0 {
 		return
@@ -154,17 +174,32 @@ func (t *Tree) Grow(count int) {
 		}
 	}
 
-	keepCount = 0
-	for _, leaf := range copy {
+	t.packageMap = copy
+	t.printGrow(count, "After")
+
+	t.Grow(count - 1)
+}
+
+func (t *Tree) printGrow(count int, info string) {
+	keepCount := 0
+	totalCount := 0
+	for _, leaf := range t.packageMap {
+		totalCount++
 		if leaf.keep {
 			keepCount++
 		}
 	}
-	logrus.Debugf("Grow %d. After: keep %d", count, keepCount)
+	logrus.Debugf("Grow %d. %s: keep %d (total %d)", count, info, keepCount, totalCount)
+}
 
-	t.packageMap = copy
+func (t *Tree) copyPackageMap() map[string]*Leaf {
+	copy := make(map[string]*Leaf)
 
-	t.Grow(count - 1)
+	for name, leaf := range t.packageMap {
+		copy[name] = leaf.copy()
+	}
+
+	return copy
 }
 
 // Prune removes all packages and package imports from the tree that are not
@@ -184,43 +219,6 @@ func (t *Tree) Prune() {
 			t.packageMap[name] = leaf
 		}
 	}
-}
-
-func (t *Tree) filterNames(names []string) []string {
-	r := []string{}
-	for _, name := range names {
-		name = t.filter(name)
-		if name != "" {
-			r = append(r, name)
-		}
-	}
-	return r
-}
-
-func (t *Tree) filter(name string) string {
-	if t.filterPattern != nil && !t.filterPattern.MatchString(name) {
-		// doesn't match the filter, skip it
-		return ""
-	}
-
-	if t.prefix != "" {
-		if !strings.HasPrefix(name, t.prefix) {
-			// doesn't have the prefix, skip it
-			return ""
-		}
-	}
-
-	return name
-}
-
-func (t *Tree) copyPackageMap() map[string]*Leaf {
-	copy := make(map[string]*Leaf)
-
-	for name, leaf := range t.packageMap {
-		copy[name] = leaf.copy()
-	}
-
-	return copy
 }
 
 func (t *Tree) countImports() {

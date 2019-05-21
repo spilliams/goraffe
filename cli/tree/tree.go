@@ -9,13 +9,15 @@ import (
 // Tree isn't actually a tree structure, but maintains a map of package names
 // to Leaves.
 type Tree struct {
-	packageMap    map[string]*Leaf
-	filterPattern *regexp.Regexp
-	prefix        string
+	packageMap       map[string]*Leaf
+	filterPattern    *regexp.Regexp
+	parentDirectory  string
+	includeTests     bool
+	includeExternals bool
 }
 
 // NewTree returns a new, empty Tree
-func NewTree() *Tree {
+func NewTree(parentDirectory string) *Tree {
 	t := Tree{
 		packageMap: make(map[string]*Leaf),
 	}
@@ -33,12 +35,12 @@ func (t *Tree) SetFilter(filter string) (err error) {
 	return nil
 }
 
-// SetPrefix sets the tree's prefix. Any time a package is about to be added to
-// the tree, it gets checked for this prefix. If it doesn't have the prefix, it
-// won't get added. Additionally, if the prefix is set, all display names of
-// the tree's packages will omit the prefix for clarity.
-func (t *Tree) SetPrefix(prefix string) {
-	t.prefix = prefix
+func (t *Tree) IncludeTests(includeTests bool) {
+	t.includeTests = includeTests
+}
+
+func (t *Tree) IncludeExternals(includeExternals bool) {
+	t.includeExternals = includeExternals
 }
 
 // Leaf contains helpful information about each package, like the package

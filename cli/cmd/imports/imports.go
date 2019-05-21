@@ -2,8 +2,6 @@ package imports
 
 import (
 	"fmt"
-	"sort"
-	"strings"
 
 	"github.com/spilliams/goraffe/cli/tree"
 
@@ -13,84 +11,80 @@ import (
 
 // the names of the flags
 const (
-	filterFlag = "filter"
-	prefixFlag = "prefix"
-	singleFlag = "single"
-	growFlag   = "grow"
-	testsFlag  = "includeTests"
+	externalsFlag = "includeExternals"
+	filterFlag    = "filter"
+	growFlag      = "grow"
+	keepFlag      = "keep"
+	testsFlag     = "includeTests"
 )
 
-var flagsDocs = map[string]string{
-	filterFlag: "the graph will not include packages that don't match that filter",
-	prefixFlag: "the graph will not include packages that have that prefix AND the graph\nwill truncate each package's name to exclude the prefix",
-	singleFlag: "the graph will contain that package, its direct ancestors, and its\ndirect descendants",
-	growFlag:   "used in conjunction with --" + singleFlag + ", the graph will \"grow\"\nthe tree the number of times you specify",
-	testsFlag:  "the tree will include imports from Go test files",
-}
-
 var importsFlags struct {
-	filter string
-	prefix string
-	single string
-	grow   int
-	tests  bool
+	externals bool
+	filter    string
+	grow      int
+	keeps     []string
+	tests     bool
 }
 
-func optionsDoc() string {
-	options := []string{filterFlag, prefixFlag, singleFlag, growFlag, testsFlag}
-	sort.Strings(options)
-	r := ""
-	for _, option := range options {
-		doc := flagsDocs[option]
-		docLines := strings.Split(doc, "\n")
-		doc = strings.Join(docLines, "\n\t\t")
-		r += fmt.Sprintf("\t--%s\n\t\t%s\n", option, doc)
-	}
-	return r
+func init() {
+	Cmd.Flags().StringVar(&importsFlags.filter, filterFlag, "", "Regular expression filter to apply to the package\nlist. The filter is applied via regular expressions,\nand operates on the full import path of each package.")
+	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
+	Cmd.Flags().BoolVar(&importsFlags.externals, externalsFlag, false, "[EXPERIMENTAL] Whether to include packages outside\nthe given parent directroy (e.g. golang builtins, or\nvendored packages).")
+	Cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
+	Cmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
 }
 
 var Cmd = &cobra.Command{
-	Use:   "imports <packages>",
+	Use:   "imports <parent directory> <root packages>",
+	Args:  validateImportsArgs,
 	Short: "Visualize package imports",
 	Long: `Visualize package imports.
 	
-The packages you list as arguments to this command all get added as "roots" in
-the graph.
+The parent directory you provide will be treated as a boundary--packages from
+outside that directory will not be included by default. Also, in the resulting
+output, the name of that parent will be trimmed from the prefix of all the
+package names. The root packages can be named with or without the parent
+directory prefix.
 
-The graph will include everything the roots import, recursively. The graph will
-include the entire dependency chain of the packages you list.
+The root packages you list as arguments to this command form the start of the
+import-dependency tree. How the tree develops and is output is determined by
+the other flags you provide this command.
 
-Options:
-` + optionsDoc() + `
+By default, the output will include everything the roots import, recursively.
+The graph will include the entire dependency chain of the packages you list.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
-		importTree := tree.NewTree()
+		importTree := tree.NewTree(args[0])
+
+		packages := args[1:]
+		for _, pkg := range packages {
+			if _, err := importTree.AddRecursive(pkg); err != nil {
+				return err
+			}
+		}
 
 		if importsFlags.filter != "" {
-			logrus.Debugf("%s is '%s'", filterFlag, importsFlags.filter)
 			if err := importTree.SetFilter(importsFlags.filter); err != nil {
 				return err
 			}
 		}
 
-		if importsFlags.prefix != "" {
-			logrus.Debugf("%s is '%s'", prefixFlag, importsFlags.prefix)
-			importTree.SetPrefix(importsFlags.prefix)
+		if importsFlags.externals {
+			importTree.IncludeExternals(true)
 		}
 
-		for _, pkg := range args {
-			if _, err := importTree.AddRecursive(pkg, importsFlags.tests); err != nil {
+		if importsFlags.tests {
+			importTree.IncludeTests(true)
+		}
+
+		for _, name := range importsFlags.keeps {
+			if err := importTree.Keep(name); err != nil {
 				return err
 			}
 		}
-
-		if importsFlags.single != "" {
-			logrus.Debugf("%s is '%s'", singleFlag, importsFlags.single)
-			if err := importTree.Keep(importsFlags.single); err != nil {
-				return err
-			}
+		if len(importsFlags.keeps) > 0 {
 			importTree.Grow(importsFlags.grow)
 			importTree.Prune()
 		}
@@ -108,10 +102,9 @@ Options:
 	},
 }
 
-func init() {
-	Cmd.Flags().StringVar(&importsFlags.filter, filterFlag, "", "Regular expression filter to apply to the package list")
-	Cmd.Flags().StringVar(&importsFlags.prefix, prefixFlag, "", "Prefix filter to apply to the package list")
-	Cmd.Flags().StringVar(&importsFlags.single, singleFlag, "", "Pick a single package to show ancestors and descendants of")
-	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept packages")
-	Cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files")
+func validateImportsArgs(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("must provide at lease one argument, as package root")
+	}
+	return nil
 }
