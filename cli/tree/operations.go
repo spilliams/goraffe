@@ -95,12 +95,7 @@ func (t *Tree) filterNames(names []string) []string {
 }
 
 func (t *Tree) filter(name string) string {
-	if t.filterPattern != nil && !t.filterPattern.MatchString(name) {
-		// doesn't match the filter, skip it
-		return ""
-	}
-
-	if !t.includeExternals && !strings.HasPrefix(name, t.parentDirectory) {
+	if !strings.HasPrefix(name, t.parentDirectory) {
 		// doesn't have the prefix, skip it
 		return ""
 	}

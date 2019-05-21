@@ -11,25 +11,19 @@ import (
 
 // the names of the flags
 const (
-	externalsFlag = "includeExternals"
-	filterFlag    = "filter"
-	growFlag      = "grow"
-	keepFlag      = "keep"
-	testsFlag     = "includeTests"
+	growFlag  = "grow"
+	keepFlag  = "keep"
+	testsFlag = "includeTests"
 )
 
 var importsFlags struct {
-	externals bool
-	filter    string
-	grow      int
-	keeps     []string
-	tests     bool
+	grow  int
+	keeps []string
+	tests bool
 }
 
 func init() {
-	Cmd.Flags().StringVar(&importsFlags.filter, filterFlag, "", "Regular expression filter to apply to the package\nlist. The filter is applied via regular expressions,\nand operates on the full import path of each package.")
 	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
-	Cmd.Flags().BoolVar(&importsFlags.externals, externalsFlag, false, "[EXPERIMENTAL] Whether to include packages outside\nthe given parent directroy (e.g. golang builtins, or\nvendored packages).")
 	Cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
 	Cmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
 }
@@ -63,16 +57,6 @@ The graph will include the entire dependency chain of the packages you list.
 			if _, err := importTree.AddRecursive(pkg); err != nil {
 				return err
 			}
-		}
-
-		if importsFlags.filter != "" {
-			if err := importTree.SetFilter(importsFlags.filter); err != nil {
-				return err
-			}
-		}
-
-		if importsFlags.externals {
-			importTree.IncludeExternals(true)
 		}
 
 		if importsFlags.tests {

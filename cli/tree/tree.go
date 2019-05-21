@@ -3,17 +3,14 @@ package tree
 import (
 	"fmt"
 	"go/build"
-	"regexp"
 )
 
 // Tree isn't actually a tree structure, but maintains a map of package names
 // to Leaves.
 type Tree struct {
-	packageMap       map[string]*Leaf
-	filterPattern    *regexp.Regexp
-	parentDirectory  string
-	includeTests     bool
-	includeExternals bool
+	packageMap      map[string]*Leaf
+	parentDirectory string
+	includeTests    bool
 }
 
 // NewTree returns a new, empty Tree
@@ -25,22 +22,8 @@ func NewTree(parentDirectory string) *Tree {
 	return &t
 }
 
-// SetFilter sets the tree's filter. Any time a package is about to be added to
-// the tree, it gets checked by this filter first. If it doesn't match the
-// regular expression, it won't get added.
-func (t *Tree) SetFilter(filter string) (err error) {
-	if t.filterPattern, err = regexp.Compile(filter); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (t *Tree) IncludeTests(includeTests bool) {
 	t.includeTests = includeTests
-}
-
-func (t *Tree) IncludeExternals(includeExternals bool) {
-	t.includeExternals = includeExternals
 }
 
 // Leaf contains helpful information about each package, like the package
