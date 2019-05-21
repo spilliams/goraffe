@@ -13,7 +13,7 @@ Very much a work in progress. I'm using this to learn about go tools, brush off
 old graphviz skillz, and perhaps make something useful to other Go developers.
 
 This codebase does not currently use go modules, and is meant to work only
-inside a GOPATH, and run against other repos in the GOPATH.
+inside a ``$GOPATH``, and run against other repos in the ``$GOPATH``.
 
 Installation
 ============
@@ -22,19 +22,29 @@ Installation
 
     $ go get -u github.com/spilliams/goraffe/goraffe
 
+Usage
+=====
+
+.. code-block:: console
+
+    $ goraffe imports <parent directory> <root packages> [flags]
+
+This command is built with `cobra <https://github.com/spf13/cobra/>`__, so all
+of its subcommands have a ``-h|--help`` option for displaying documentation, as
+well as a ``-v|--verbose`` option for printing more output (to ``stderr``).
+
 TODO
 ====
 
 1. any kind of tests
-2. add a legend to the graphviz output
-3. rewrite the command so that "repo" is the first arg, then "roots" (do I need
-   "keeps" to be separate from "roots"?). Allow for ellipse nodes that
-   correspond to folders instead of packages.
+2. optionally add a legend to the graphviz output?
+3. try again on modules
 
 call tracer
 -----------
 
-``goraffe calltree <pkg> <func>`` can we introspect on function calls within the context of a package?
+``goraffe calltree <pkg> <func>`` can we introspect on function calls within
+the context of a package?
 
 I have one or more funcs I wish to trace
 I want to trace them back to roots (so the graph doesn't get so out of whack)
@@ -61,10 +71,8 @@ Resources to Explore
 
 - read that book on dataviz
 - `gddo-server <https://github.com/golang/gddo/blob/master/gddo-server/graph.go>`__
-- `davecheney/graphpkg <https://github.com/davecheney/graphpkg>`__
 - davecheney's `glyph <https://github.com/davecheney/junk/tree/master/glyph>`__
-- `gonum...dot <https://github.com/gonum/gonum/tree/master/graph/encoding/dot>`__, or `awalterschulze/gographviz <https://github.com/awalterschulze/gographviz>`__
 - https://codefreezr.github.io/awesome-graphviz/#libs-for-go
 - https://groups.google.com/forum/#!forum/gonum-dev
 - https://www.gonum.org/post/introtogonum/
-- `runtime Caller <https://golang.org/pkg/runtime/#Caller>`__
+- `gonum...dot <https://github.com/gonum/gonum/tree/master/graph/encoding/dot>`__
