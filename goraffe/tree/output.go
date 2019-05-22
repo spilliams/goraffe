@@ -57,6 +57,35 @@ func (t *Tree) String() string {
 	return r
 }
 
+func (t *Tree) Stats() string {
+	t.countImports()
+
+	singleParentCount := 0
+	rootCount := 0
+	brokenCount := 0
+	for _, leaf := range t.packageMap {
+		if leaf.ImportCount() == 1 {
+			singleParentCount++
+		}
+		if leaf.IsRoot() {
+			rootCount++
+		}
+		if leaf.IsBroken() {
+			brokenCount++
+		}
+	}
+
+	edges := t.Broaden()
+
+	return fmt.Sprintf("%d packages\n  %d with a single parent\n  %d are roots\n  %d are broken\n%d import statements",
+		len(t.packageMap),
+		singleParentCount,
+		rootCount,
+		brokenCount,
+		len(edges),
+	)
+}
+
 // Graphviz returns the tree's representation in the graphviz source language,
 // as for use with the `dot` command-line tool.
 // See https://graphviz.org/documentation/ for more information.

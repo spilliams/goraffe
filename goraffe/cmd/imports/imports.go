@@ -87,6 +87,8 @@ An example of using the output:
 		}
 
 		fmt.Println(graph)
+		
+		logrus.Info(importTree.Stats())
 
 		return nil
 	},
