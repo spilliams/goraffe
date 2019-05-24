@@ -75,6 +75,11 @@ func (l *Leaf) ImportCount() int {
 	return l.importCount
 }
 
+// SetDisplayName modifies the receiver's display name
+func (l *Leaf) SetDisplayName(name string) {
+	l.displayName = name
+}
+
 // SetRoot sets whether the receiver is a root or not.
 func (l *Leaf) SetRoot(root bool) {
 	l.root = root
