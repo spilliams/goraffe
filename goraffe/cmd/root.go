@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Verbose bool
+var verbose bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -40,7 +40,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initLogger)
 
-	RootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
 	RootCmd.AddCommand(imports.Cmd)
 	RootCmd.AddCommand(versionCmd)
@@ -48,7 +48,7 @@ func init() {
 
 func initLogger() {
 	logrus.SetLevel(logrus.InfoLevel)
-	if Verbose {
+	if verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 	logrus.SetOutput(RootCmd.OutOrStderr())
