@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 set -ex
 
-go build -o $GOPATH/bin/goraffe github.com/spilliams/goraffe/goraffe
+source scripts/_ldflags.sh
+go build -ldflags "${LDFLAGS}" -o $GOPATH/bin/goraffe github.com/spilliams/goraffe/goraffe

@@ -13,19 +13,22 @@ import (
 const (
 	growFlag  = "grow"
 	keepFlag  = "keep"
-	testsFlag = "includeTests"
+	testsFlag = "tests"
+	extsFlag  = "exts"
 )
 
 var importsFlags struct {
 	grow  int
 	keeps []string
 	tests bool
+	exts  bool
 }
 
 func init() {
 	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
 	Cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
 	Cmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
+	Cmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directoy.")
 }
 
 var Cmd = &cobra.Command{
@@ -51,22 +54,21 @@ This command outputs DOT language, to be used with a graphviz tool such as
 ` + "`dot`" + `. For more information, see https://graphviz.org/.
 An example of using the output:
 
-	goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
+goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// importTree is a map of "name" -> ["import", "import", ...]
 		importTree := tree.NewTree(args[0])
 
+		importTree.SetIncludeTests(importsFlags.tests)
+		importTree.SetIncludeExts(importsFlags.exts)
+
 		packages := args[1:]
 		for _, pkg := range packages {
 			if _, err := importTree.AddRecursive(pkg); err != nil {
 				return err
 			}
-		}
-
-		if importsFlags.tests {
-			importTree.SetIncludeTests(true)
 		}
 
 		for _, name := range importsFlags.keeps {

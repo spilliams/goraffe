@@ -20,14 +20,14 @@ Installation
 
 .. code-block:: console
 
-    $ go get -u github.com/spilliams/goraffe/goraffe
+   $ go get -u github.com/spilliams/goraffe/goraffe
 
 Usage
 =====
 
 .. code-block:: console
 
-    $ goraffe imports <parent directory> <root packages> [flags]
+   $ goraffe imports <parent directory> <root packages> [flags]
 
 This command is built with `cobra <https://github.com/spf13/cobra/>`__, so all
 of its subcommands have a ``-h|--help`` option for displaying documentation, as
@@ -39,6 +39,30 @@ TODO
 1. any kind of tests
 2. optionally add a legend to the graphviz output?
 3. try again on modules
+
+spitball: scopes
+----------------
+
+1. I tried the original scope idea, which was to name every root package. it
+   was wordy, and it was bad at including things it couldn't find.
+2. I then (now) tried the "parent directory" scope idea, which was to name the
+   parent directory, then name all the roots relative to that. It's less wordy,
+   and avoids completely the external imports.
+3. I foresee a future where three separate repos (all inside the GOPATH or even
+   all as separate go modules) have cross-imports with each other, and someone
+   will want to graph that. Think like, packages named ``product-server``,
+   ``product-client``, and ``product-shared``.
+4. There's also a possibility I *do* want to include ``fmt`` and ``strings``.
+   Or maybe I want to see the internal structure of ``fmt`` or ``strings``.
+5. I will need to handle importing externals, gracefully exclude "C", etc.
+
+What stands in my way?
+
+-  I'm not quite sure what go means when it talks about "vendors". Prefixing a
+   package with "vendor/" seems to help some things, but I don't know why.
+-  I tried including externals once already and some packages just didn't have
+   **any** edges on them. Others had edges on them but still listed as 0 up,
+   0 down.
 
 call tracer
 -----------
@@ -59,6 +83,9 @@ care about.
 Sort of a "trace the func up to the roots, then pick some of the roots to keep,
 and trickle down a 'keep' flag, then trim away all the stuff that isn't 'keep'"
 
+update: can i use something like a Language Server Protocol for getting this info?
+https://langserver.org/
+
 Methodology
 -----------
 
@@ -70,9 +97,14 @@ Resources to Explore
 --------------------
 
 - read that book on dataviz
-- `gddo-server <https://github.com/golang/gddo/blob/master/gddo-server/graph.go>`__
+
 - davecheney's `glyph <https://github.com/davecheney/junk/tree/master/glyph>`__
-- https://codefreezr.github.io/awesome-graphviz/#libs-for-go
+
+- `gddo-server <https://github.com/golang/gddo/blob/master/gddo-server/graph.go>`__
+- https://github.com/kisielk/godepgraph
+
 - https://groups.google.com/forum/#!forum/gonum-dev
 - https://www.gonum.org/post/introtogonum/
 - `gonum...dot <https://github.com/gonum/gonum/tree/master/graph/encoding/dot>`__
+
+- https://github.com/sourcegraph/go-langserver or https://github.com/golang/go/wiki/gopls ?
