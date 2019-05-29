@@ -97,8 +97,8 @@ goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 }
 
 func validateImportsArgs(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("must provide at lease one argument, as package root")
+	if len(args) < 2 {
+		return fmt.Errorf("must provide at lease two arguments, the parent directory and at least one package (to be the root of the graph)")
 	}
 	return nil
 }

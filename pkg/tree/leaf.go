@@ -71,6 +71,7 @@ func (l *Leaf) String() string {
 	)
 }
 
+// ImportCount returns the receiver's import-count
 func (l *Leaf) ImportCount() int {
 	return l.importCount
 }
@@ -85,6 +86,7 @@ func (l *Leaf) SetRoot(root bool) {
 	l.root = root
 }
 
+// IsRoot returns whether the receiver is a "root" leaf or not
 func (l *Leaf) IsRoot() bool {
 	return l.root
 }
