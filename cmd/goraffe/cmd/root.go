@@ -35,6 +35,7 @@ func init() {
 
 	RootCmd.AddCommand(importsCmd)
 	RootCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(referrersCmd)
 }
 
 func initLogger() {
