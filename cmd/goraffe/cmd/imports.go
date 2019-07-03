@@ -19,11 +19,11 @@ const (
 )
 
 var importsFlags struct {
-	grow   int
-	keeps  []string
-	tests  bool
-	exts   bool
-	branch string
+	grow     int
+	keeps    []string
+	tests    bool
+	exts     bool
+	branches []string
 }
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 	importsCmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
 	importsCmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
 	importsCmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directory.")
-	importsCmd.Flags().StringVar(&importsFlags.branch, branchFlag, "", "Designate a package to branch to--the tree will include the root and this branch, and just the imports in between.")
+	importsCmd.Flags().StringArrayVar(&importsFlags.branches, branchFlag, []string{}, "Designate a package to branch to--the tree will include the root and this branch, and just the imports in between.")
 }
 
 var importsCmd = &cobra.Command{
@@ -84,11 +84,15 @@ goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 		if len(importsFlags.keeps) > 0 {
 			importTree.Grow(importsFlags.grow)
 			importTree.Prune()
-		} else if importsFlags.branch != "" {
-			if err := importTree.Branch(importsFlags.branch); err != nil {
-				return err
+		} else {
+			for _, branch := range importsFlags.branches {
+				if err := importTree.Branch(branch); err != nil {
+					return err
+				}
 			}
-			importTree.Prune()
+			if len(importsFlags.branches) > 0 {
+				importTree.Prune()
+			}
 		}
 
 		logrus.Debug(importTree)

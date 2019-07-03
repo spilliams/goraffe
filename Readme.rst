@@ -43,14 +43,14 @@ the named roots.
 
 .. code-block:: console
 
-   $ goraffe imports <parent directory> <root package> --keep <other package> --grow 2
+   $ goraffe imports <parent directory> <root package> --keep <other package> [--keep <other package>]--grow 2
 
 The "keep/grow" flags will let you zero in on a specific package in the tree,
 and see importers and importees N levels away (in this example, 2).
 
 .. code-block:: console
 
-   $ goraffe imports <parent directory> <root packages> --branch <other packages>
+   $ goraffe imports <parent directory> <root packages> --branch <other package> [--branch <other package>]
 
 The "branch" flag will let you track all the import paths between the root(s)
 and the named package(s).
