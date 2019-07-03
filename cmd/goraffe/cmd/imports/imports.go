@@ -3,7 +3,7 @@ package imports
 import (
 	"fmt"
 
-	"github.com/spilliams/goraffe/goraffe/tree"
+	"github.com/spilliams/goraffe/pkg/tree"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -89,7 +89,7 @@ goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 		}
 
 		fmt.Println(graph)
-		
+
 		logrus.Info(importTree.Stats())
 
 		return nil

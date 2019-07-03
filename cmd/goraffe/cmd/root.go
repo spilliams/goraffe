@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spilliams/goraffe/goraffe/cmd/imports"
-	"github.com/spilliams/goraffe/version"
+	"github.com/spilliams/goraffe/cmd/goraffe/cmd/imports"
+	"github.com/spilliams/goraffe/internal/version"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
