@@ -26,8 +26,7 @@ func (t *Tree) Broaden() []map[string]string {
 	return b
 }
 
-// PackageNames returns a sorted list of all of the tree's packages and package
-// dependencies.
+// PackageNames returns a sorted list of all of the tree's packages
 func (t *Tree) PackageNames() []string {
 	names := make(map[string]bool)
 	for name, leaf := range t.packageMap {
@@ -49,6 +48,8 @@ func (t *Tree) PackageNames() []string {
 }
 
 func (t *Tree) String() string {
+	t.countImports()
+
 	r := "Tree{\n"
 	for name, leaf := range t.packageMap {
 		r += fmt.Sprintf("\t%s: %s\n", name, leaf)

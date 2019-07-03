@@ -22,7 +22,7 @@ func (t *Tree) AddRecursive(name string) (bool, error) {
 }
 
 func (t *Tree) add(name string, recurse, root bool) (bool, error) {
-	logrus.Debugf("add(%s, %v, %v)", name, recurse, root)
+	logrus.Infof("Adding %s", name)
 
 	// skip the ones we should not include
 	if !t.shouldInclude(name) {
@@ -208,6 +208,7 @@ func contains(st []string, s string) bool {
 // Should only be used as a result of user action (e.g. not for automatic
 // "grow" operations)
 func (t *Tree) Keep(name string) error {
+	logrus.Infof("Keeping %s", name)
 	leaf, ok := t.packageMap[name]
 	if !ok {
 		return fmt.Errorf("package %s not found", name)
@@ -221,6 +222,7 @@ func (t *Tree) Keep(name string) error {
 // Grow expands the "tree" of kept packages by the given count. This works in
 // both directions (ancestors and descendants).
 func (t *Tree) Grow(count int) {
+	logrus.Infof("Growing %d", count)
 	t.printGrow(count, "Before")
 
 	if count <= 0 {
@@ -284,6 +286,7 @@ func (t *Tree) copyPackageMap() map[string]*Leaf {
 // Prune removes all packages and package imports from the tree that are not
 // marked for keeping.
 func (t *Tree) Prune() {
+	logrus.Info("Pruning")
 	for name, leaf := range t.packageMap {
 		if !leaf.keep {
 			delete(t.packageMap, name)
@@ -298,4 +301,49 @@ func (t *Tree) Prune() {
 			t.packageMap[name] = leaf
 		}
 	}
+}
+
+// Branch marks all packages between the given package and the root for keeping.
+func (t *Tree) Branch(b string) error {
+	for name, leaf := range t.packageMap {
+		if leaf.IsRoot() {
+			if err := t.branchBetween(name, b); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (t *Tree) branchBetween(upper, lower string) error {
+	logrus.Infof("Branching between %s and %s", upper, lower)
+	if err := t.Keep(lower); err != nil {
+		return err
+	}
+
+	broad := t.Broaden()
+	inverse := map[string][]string{}
+	for _, m := range broad {
+		for k, v := range m {
+			if _, ok := inverse[v]; !ok {
+				inverse[v] = []string{}
+			}
+			inverse[v] = append(inverse[v], k)
+		}
+	}
+
+	check := []string{lower}
+
+	for len(check) > 0 {
+		this := check[0]
+		check = check[1:]
+		for _, importer := range inverse[this] {
+			l := t.packageMap[importer]
+			l.keep = true
+			t.packageMap[importer] = l
+			check = append(check, importer)
+		}
+	}
+
+	return nil
 }
