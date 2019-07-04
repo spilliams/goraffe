@@ -25,9 +25,35 @@ Installation
 Usage
 =====
 
+Imports
+-------
+
+``goraffe imports`` is a command that builds a tree of package names, connected
+by how they import each other. The various options and flags of imports are
+described in its help function (``goraffe imports --help``), but here are some
+example use cases:
+
 .. code-block:: console
 
    $ goraffe imports <parent directory> <root packages> [flags]
+
+The basic command with ``<parent directory>`` and ``<root packages>`` will
+build the whole tree of everything inside the parent directory, starting from
+the named roots.
+
+.. code-block:: console
+
+   $ goraffe imports <parent directory> <root package> --keep <other package> [--keep <other package>]--grow 2
+
+The "keep/grow" flags will let you zero in on a specific package in the tree,
+and see importers and importees N levels away (in this example, 2).
+
+.. code-block:: console
+
+   $ goraffe imports <parent directory> <root packages> --branch <other package> [--branch <other package>]
+
+The "branch" flag will let you track all the import paths between the root(s)
+and the named package(s).
 
 This command is built with `cobra <https://github.com/spf13/cobra/>`__, so all
 of its subcommands have a ``-h|--help`` option for displaying documentation, as

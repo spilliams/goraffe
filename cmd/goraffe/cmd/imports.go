@@ -11,24 +11,27 @@ import (
 
 // the names of the flags
 const (
-	growFlag  = "grow"
-	keepFlag  = "keep"
-	testsFlag = "tests"
-	extsFlag  = "exts"
+	growFlag   = "grow"
+	keepFlag   = "keep"
+	testsFlag  = "tests"
+	extsFlag   = "exts"
+	branchFlag = "branch"
 )
 
 var importsFlags struct {
-	grow  int
-	keeps []string
-	tests bool
-	exts  bool
+	grow     int
+	keeps    []string
+	tests    bool
+	exts     bool
+	branches []string
 }
 
 func init() {
 	importsCmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
 	importsCmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
 	importsCmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
-	importsCmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directoy.")
+	importsCmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directory.")
+	importsCmd.Flags().StringArrayVar(&importsFlags.branches, branchFlag, []string{}, "Designate a package to branch to--the tree will include the root and this branch, and just the imports in between.")
 }
 
 var importsCmd = &cobra.Command{
@@ -76,9 +79,20 @@ goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 				return err
 			}
 		}
+
+		// honor either keeps or branch, not both
 		if len(importsFlags.keeps) > 0 {
 			importTree.Grow(importsFlags.grow)
 			importTree.Prune()
+		} else {
+			for _, branch := range importsFlags.branches {
+				if err := importTree.Branch(branch); err != nil {
+					return err
+				}
+			}
+			if len(importsFlags.branches) > 0 {
+				importTree.Prune()
+			}
 		}
 
 		logrus.Debug(importTree)
