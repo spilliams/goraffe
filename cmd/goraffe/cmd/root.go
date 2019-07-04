@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spilliams/goraffe/cmd/goraffe/cmd/imports"
 	"github.com/spilliams/goraffe/internal/version"
 
 	"github.com/sirupsen/logrus"
@@ -18,14 +17,6 @@ var RootCmd = &cobra.Command{
 	Use:     "goraffe <command>",
 	Short:   "A tool for graphing go packages",
 	Version: version.Info(),
-}
-
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Prints version information",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.Info())
-	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -42,7 +33,7 @@ func init() {
 
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
-	RootCmd.AddCommand(imports.Cmd)
+	RootCmd.AddCommand(importsCmd)
 	RootCmd.AddCommand(versionCmd)
 }
 

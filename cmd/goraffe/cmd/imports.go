@@ -1,4 +1,4 @@
-package imports
+package cmd
 
 import (
 	"fmt"
@@ -25,13 +25,13 @@ var importsFlags struct {
 }
 
 func init() {
-	Cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
-	Cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
-	Cmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
-	Cmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directoy.")
+	importsCmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
+	importsCmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
+	importsCmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
+	importsCmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directoy.")
 }
 
-var Cmd = &cobra.Command{
+var importsCmd = &cobra.Command{
 	Use:     "imports <parent directory> <root packages>",
 	Args:    validateImportsArgs,
 	Example: "goraffe -v imports github.com/spilliams/goraffe goraffe",
@@ -97,8 +97,8 @@ goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
 }
 
 func validateImportsArgs(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("must provide at lease one argument, as package root")
+	if len(args) < 2 {
+		return fmt.Errorf("must provide at lease two arguments, the parent directory and at least one package (to be the root of the graph)")
 	}
 	return nil
 }

@@ -57,6 +57,7 @@ func (t *Tree) String() string {
 	return r
 }
 
+// Stats returns a string of the receiver's statistics
 func (t *Tree) Stats() string {
 	t.countImports()
 
