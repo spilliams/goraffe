@@ -34,7 +34,6 @@ func init() {
 
 	rootCmd.AddCommand(newImportsCmd())
 	rootCmd.AddCommand(newVersionCmd())
-	rootCmd.AddCommand(newDescribeCmd())
 }
 
 func initLogger() {
