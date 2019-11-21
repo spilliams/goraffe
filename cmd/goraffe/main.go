@@ -1,7 +1,7 @@
 package main
 
-import "github.com/spilliams/goraffe/cmd/goraffe/cmd"
+import "github.com/spilliams/goraffe/internal/cli"
 
 func main() {
-	cmd.Execute()
+	cli.Execute()
 }
