@@ -3,16 +3,13 @@ package cli
 import (
 	"fmt"
 
-	"github.com/spilliams/goraffe/pkg/tree"
-
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spilliams/goraffe/internal/importer"
 )
 
 // the names of the flags
 const (
 	growFlag   = "grow"
-	keepFlag   = "keep"
 	testsFlag  = "tests"
 	extsFlag   = "exts"
 	branchFlag = "branch"
@@ -20,7 +17,6 @@ const (
 
 var importsFlags struct {
 	grow     int
-	keeps    []string
 	tests    bool
 	exts     bool
 	branches []string
@@ -50,64 +46,75 @@ This command outputs DOT language, to be used with a graphviz tool such as
 ` + "`dot`" + `. For more information, see https://graphviz.org/.
 An example of using the output:
 
-goraffe imports github.com/spilliams/goraffe goraffe | dot -Tsvg > graph.svg
+goraffe imports github.com/spilliams/goraffe cmd/goraffe | dot -Tsvg > graph.svg
+
+--branch pkg1[,pkg2,...]
+    Default: empty
+    Limit the tree output to include only the ancestry between the root
+    packages and the named branches (inclusive).
+
+--exts
+    Default: false
+    Whether or not to include package dependencies from outside the given
+    module.
+    Warning: this may make the tool very slow!
+
+--grow N
+    Default: 0
+    For use with the --branch flag.
+    How much to "grow" the tree beyond the initially-selected packages.
+
+--tests
+    Default: false
+    Whether or not to inspect (and follow) the packages imported by test files
+    (subject to other behavior limits, such as --exts).
 
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// importTree is a map of "name" -> ["import", "import", ...]
-			importTree := tree.NewTree(args[0])
-
-			importTree.SetIncludeTests(importsFlags.tests)
-			importTree.SetIncludeExts(importsFlags.exts)
+			importer := importer.NewPackageImporter(args[0])
+			importer.SetIncludeTests(importsFlags.tests)
+			importer.SetIncludeExts(importsFlags.exts)
 
 			packages := args[1:]
 			for _, pkg := range packages {
-				if _, err := importTree.AddRecursive(pkg); err != nil {
+				if _, err := importer.ImportRecursive(pkg); err != nil {
 					return err
 				}
 			}
 
-			for _, name := range importsFlags.keeps {
-				if err := importTree.Keep(name); err != nil {
-					return err
-				}
-			}
+			t := importer.Tree()
+			fmt.Println(t)
 
-			// honor either keeps or branch, not both
-			if len(importsFlags.keeps) > 0 {
-				importTree.Grow(importsFlags.grow)
-				importTree.Prune()
-			} else {
-				for _, branch := range importsFlags.branches {
-					if err := importTree.Branch(branch); err != nil {
-						return err
-					}
-				}
-				if len(importsFlags.branches) > 0 {
-					importTree.Prune()
-				}
-			}
+			// for _, branch := range importsFlags.branches {
+			// 	if err := importTree.Branch(branch); err != nil {
+			// 		return err
+			// 	}
+			// }
+			// if len(importsFlags.branches) > 0 {
+			// 	importTree.Grow(importsFlags.grow)
+			// 	importTree.Prune()
+			// }
 
-			logrus.Debug(importTree)
+			// grapher := grapher.New()
+			// if err := grapher.SetFormat(grapher.Graphviz); err != nil {
+			// 	return err
+			// }
+			// grapher.AddDigraph(t)
+			// graph, err := grapher.Render()
+			// if err != nil {
+			// 	return err
+			// }
 
-			graph, err := importTree.Graphviz()
-			if err != nil {
-				return err
-			}
-
-			fmt.Println(graph)
-
-			logrus.Info(importTree.Stats())
+			// fmt.Println(string(graph))
 
 			return nil
 		},
 	}
 
-	cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+keepFlag+".")
+	cmd.Flags().IntVar(&importsFlags.grow, growFlag, 1, "How far to \"grow\" the tree away from any kept\npackages. Use with --"+branchFlag+".")
 	cmd.Flags().BoolVar(&importsFlags.tests, testsFlag, false, "Whether to include imports from Go test files.")
-	cmd.Flags().StringArrayVar(&importsFlags.keeps, keepFlag, []string{}, "Designate some packages to \"keep\", and prune away\nthe rest.")
 	cmd.Flags().BoolVar(&importsFlags.exts, extsFlag, false, "[SLOW] Whether to include packages from outside the\nparent directory.")
-	cmd.Flags().StringArrayVar(&importsFlags.branches, branchFlag, []string{}, "Designate a package to branch to--the tree will include the root and this branch, and just the imports in between.")
+	cmd.Flags().StringSliceVar(&importsFlags.branches, branchFlag, []string{}, "Designate a package to branch to--the tree will include the root and this branch, and just the imports in between.")
 
 	return cmd
 }

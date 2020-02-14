@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spilliams/goraffe/internal/version"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spilliams/goraffe/internal/version"
 )
 
 var verbose bool

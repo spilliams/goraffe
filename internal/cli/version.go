@@ -3,9 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/spilliams/goraffe/internal/version"
-
 	"github.com/spf13/cobra"
+	"github.com/spilliams/goraffe/internal/version"
 )
 
 func newVersionCmd() *cobra.Command {
