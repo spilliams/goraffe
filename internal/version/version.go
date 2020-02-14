@@ -5,8 +5,6 @@ import "fmt"
 // set by the linker
 var gitHash = "Unknown"
 var buildTime = "Unknown"
-
-// TODO self-inspect this
 var versionNumber = "Unknown"
 
 // Info returns the current version info
