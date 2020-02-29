@@ -9,5 +9,5 @@ var versionNumber = "Unknown"
 
 // Info returns the current version info
 func Info() string {
-	return fmt.Sprintf("version %s\nbuilt %s\nhash %s", versionNumber, buildTime, gitHash)
+	return fmt.Sprintf("%s\nbuilt %s\nhash %s", versionNumber, buildTime, gitHash)
 }
